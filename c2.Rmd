@@ -17,6 +17,7 @@ If the mean is constant, that is, $\mu_n = \mu$, the model is called **mean stat
 Trend is a property of the *model*, and the estimated trend is a function of the *data*.
 
 ### The autocovariance function
+The covariance between two random variables $Y_m$ and $Y_n$
 \[
 \gamma_{m, n}=\mathbb{E}\left[\left(Y_{m}-\mu_{m}\right)\left(Y_{n}-\mu_{n}\right)\right]
 \]
@@ -85,6 +86,7 @@ $d$ is the number of covariates, i.e., the number of columns of $Z$.
 ```{r}
 acf(resid(lm_fit))
 ```
+
 The *horizontal dashed lines* on the graph of the sample autocorrelation function (ACF) give **a measure of chance variation under the null hypothesis that the residuals are IID**.
 
 At each lag h, the chance that the estimated ACF falls within this band is approximately $95\%$. Thus, under the null hypothesis, one expects a fraction of $1/20$ of the lags of the sample ACF to fall outside this band.
