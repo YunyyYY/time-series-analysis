@@ -1,0 +1,98 @@
+---
+title: "Chapter 1. Introduction"
+output:
+  html_document:
+    df_print: paged
+  html_notebook:
+    theme: cerulean
+---
+
+### Course organization
+1. Quantifying dependence in time series data.
+2. Finding statistical arguments for the presence or absence of associations that are valid in situations with dependence.
+3. Building models for dynamic systems, which may or may not be linear and Gaussian.
+4. Using time series data to carry out statistical inference on these models.
+
+### Example: weather in Michigan
+```{r}
+y <- read.table(file="data/ann_arbor_weather.csv",header=1)
+str(y)
+```
+
+`str` summarizes the structure of the data. We write the $N$ data points as $y_{1: N}$. Basic estimates of the mean and standard deviation are
+\[
+\hat{\mu}_{1}=\frac{1}{N} \sum_{n=1}^{N} y_{n}, \quad \hat{\sigma}_{1}=\sqrt{\frac{1}{N-1} \sum_{n=1}^{N}\left(y_{n}-\hat{\mu}_{1}\right)^{2}}
+\]
+This suggests an approximate confidence interval for $\mu$ is $\hat{\mu}_{1} \pm t_{N, \alpha/2} \hat{\sigma}_{1} / \sqrt{N}$.
+we compute$\hat{\mu_1}$ and $\mathrm{SE}_1 = \hat{\sigma_1}/\sqrt{N}$ as
+```{r}
+mu1 <- mean(y$Low,na.rm=TRUE)
+se1 <- sd(y$Low,na.rm=TRUE)/sqrt(sum(!is.na(y$Low)))
+cat("mu1 =", mu1, ", se1 =", se1, "\n")
+```
+
+Assumptions behind the confidence interval, $-2.93 \pm 1.34$: normal distribution for observations, common mean and variance, $95\%$ CI, independent, identically distributed.
+```{r}
+plot(Low~Year,data=y,ty="l")
+```
+
+### ARMA model
+An ARMA(1,1) model has a one-lag autoregressive term $\alpha\left(Y_{n-1}-\mu\right)$ and a one-lag moving average term $\beta \epsilon_{n-1}$,
+\[
+Y_{n}=\mu+\alpha\left(Y_{n-1}-\mu\right)+\epsilon_{n}+\beta \epsilon_{n-1}
+\]
+We can readily fit the ARMA(1,1) model by maximum likelihood and see a summary of the fitted model, where $\alpha$ is called `ar1`, $\beta$ is called `ma1`, and $\mu$ is called `intercept`.
+```{r}
+arma11 <- arima(y$Low, order=c(1,0,1))
+arma11
+```
+
+Write the ARMA(1,1) estimate of $\mu$ as $\mu_2$, and its standard error $\mathrm{SE}_2$,
+```{r}
+names(arma11)
+mu2 <- arma11$coef["intercept"]
+se2 <- sqrt(arma11$var.coef["intercept","intercept"])
+cat("mu2 =", mu2, ", se2 =", se2, "\n")
+```
+
+Compare the i.i.d. estimate with ARMA estimate. How do we know if the ARMA analysis is more trustworthy?
+
+Possible methods: AIC, F test (likelihood ratio test, LRT), out-of-fit data, residual analysis. For regression, F test is a LRT. In general, we do LRT not F test.
+
+#### Likelihood ratio test
+A statistical test of the goodness-of-fit between two models. A relatively more complex model is compared to a simpler model to see if it fits a particular dataset significantly better. If so, the additional parameters of the more complex model are often used in subsequent analyses. The LRT is only valid if used to compare hierarchically nested models. That is, the more complex model must differ from the simple model only by the addition of one or more parameters. Adding additional parameters will always result in a higher likelihood score. However, there comes a point when adding additional parameters is no longer justified in terms of significant improvement in fit of a model to a particular dataset. The LRT provides one objective criterion for selecting among possible models.
+
+### Diagnostic analysis
+For an ARMA model, the residual $r_n$ at time $t_n$ is defined to be the difference between the data $y_n$ and a one-step ahead prediction of $y_n$ based on $y_{1:n-1}$, written as $y_N^P$. ARMA(1, 1) defines
+\[
+Y_{n}=\mu+\alpha\left(Y_{n-1}-\mu\right)+\epsilon_{n}+\beta \epsilon_{n-1}
+\]
+a basic one-step-ahead predicted value corresponding to parameter estimates $\hat\mu$ and $\hat\alpha$ could be
+\[
+y_{n}^{P}=\hat{\mu}+\hat{\alpha}\left(y_{n-1}-\hat{\mu}\right)
+\]
+A residual time series $\{r_n\}$ is then given by $r_{n}=y_{n}-y_{n}^{P}$.
+```{r}
+plot(arma11$resid)
+```
+
+We can plot the pairwise sample correlations of residuals at a range of lags. The **sample autocorrelation function**, or sample ACF, written for each lag $h$ as
+\[
+\hat{\rho}_{h}=\frac{\frac{1}{N} \sum_{n=1}^{N-h} r_{n} r_{n+h}}{\frac{1}{N} \sum_{n=1}^{N} r_{n}^{2}}
+\]
+Where the nominator is called the **sample autocovariance function**,
+\[
+\hat{\gamma}(h)=\frac{1}{N} \sum_{n=1}^{N-|h|}\left(x_{n+|h|}-\bar{x}\right)\left(x_{n}-\bar{x}\right), \quad \text { for }-N<h<N
+\]
+```{r}
+acf(arma11$resid,na.action=na.pass)
+```
+
+We usually focuse on small lags (e.g. $0\sim5$). The blue dashed lines indicate consistent with chance variance at $5\%$ level. 
+
+**Chance variation** or *chance error* or *random error* is the inherent error in any predictive statistical model. It is defined as the difference between the predicted value of a variable (by the statistical model in question) and the actual value of the variable. For a fairly large sample size, these errors are seen to be uniformly distributed above and below the mean and cancel each other out, resulting in an expected value of zero.
+
+
+
+
+

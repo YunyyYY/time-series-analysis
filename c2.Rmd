@@ -1,0 +1,115 @@
+---
+title: "Chapter 2. Time series models, trend and autocovariance"
+output:
+  html_document:
+    df_print: paged
+---
+
+### Trend
+Define the mean function (or trend) for $n \in 1: N$ by
+\[
+\mu_{n}=\mathbb{E}\left[Y_{n}\right]=\int_{-\infty}^{\infty} y_{n} f_{Y_{n}}\left(y_{n}\right) d y_{n}
+\]
+We only make observations at the discrete collection of times $t_1:N$ and so we require $\mu(t_n) = \mu_n$.
+
+If the mean is constant, that is, $\mu_n = \mu$, the model is called **mean stationary**. We can estimate mean use the mean estimator, $\hat{\mu} = \hat{\mu}\left(y_{1: N}\right)=\frac{1}{N} \sum_{k=1}^{N} y_{k}$. It is only a reasonable estimator of the mean function when a mean stationary model is appropriate.
+
+Trend is a property of the *model*, and the estimated trend is a function of the *data*.
+
+### The autocovariance function
+\[
+\gamma_{m, n}=\mathbb{E}\left[\left(Y_{m}-\mu_{m}\right)\left(Y_{n}-\mu_{n}\right)\right]
+\]
+If the covariance between two observations **depends only on their time difference**, the time series model is **covariance stationary**. For observations equally spaced in time, the autocovariance function is then a function of a lag $h$, $\gamma_{h}=\gamma_{n, n+h}$.
+
+For a covariance stationary model, a common *estimator* for $\gamma_h$ is
+\[
+\hat{\gamma}_{h}\left(y_{1: N}\right)=\frac{1}{N} \sum_{n=1}^{N-h}\left(y_{n}-\hat{\mu}_{n}\right)\left(y_{n+h}-\hat{\mu}_{n+h}\right)
+\]
+where $\hat{\mu}_{n}=\hat{\mu}_{n}\left(y_{1: N}\right)$ is a mean function estimator.
+
+### The autocorrelation function
+Dividing the autocovariance by the variance is the autocorrelation function $\rho_h$ given by
+\[
+\rho_{h}=\frac{\gamma_{h}}{\gamma_{0}}
+\]
+The standard autocorrelation estimator is given by $\hat{\rho}_{h}\left(y_{1: N}\right)=\frac{\hat{\gamma}_{h}\left(y_{1: N}\right)}{\hat{\gamma}_{0}\left(y_{1: N}\right)}$ and results in an estimate, the sample autocorrelation $\hat{\rho}_{h}=\hat{\rho}_{h}\left(y_{1: N}\right)=\frac{\hat{\gamma}_{h}}{\hat{\gamma}_{0}}$.
+
+Note that **correlation** and **covariance** are properties of models. Sample autocorrelation and sample autocovariance are related to data.
+
+```{r}
+global_temp <- read.table("data/Global_Temperature.txt",header=TRUE)
+str(global_temp)
+```
+```{r}
+plot(Annual~Year,data=global_temp,ty="l")
+```
+
+### Fitting a least squares model with a quadratic trend
+
+```{r}
+lm_fit <- lm(Annual~Year+I(Year^2),data=global_temp)
+```
+here `I()` is a function that tells R to construct `Year^2` as a variable, and inhibits interpretation in the R model formula notation.
+```{r}
+summary(lm_fit)
+```
+Check visually how well this model fits the data:
+```{r}
+yr <- 1880:2026
+Z <- cbind(1,yr,yr^2)
+beta <- coef(lm_fit)
+prediction <- Z%*%beta
+plot(Annual~Year,data=global_temp,ty="l",xlim=range(yr),
+ylim=range(c(global_temp$Annual,prediction),na.rm=TRUE),
+  lty="dashed")
+lines(x=yr,y=prediction,col="red")
+```
+
+### White noise error model
+The usual model behind OLS is the independent error model, known in time series analysis as the **white noise error model**.
+
+A result for linear models is that $\hat{\beta}_{O L S}\left(y_{1: N}\right)$ is the minimum variance unbiased estimator for model $Y = Z\beta + \epsilon$, where $\epsilon = \epsilon_{1:N}$ is a vector of independent, identically distributed random variables with mean zero and constant variance,$\mathbb{E}\left[\epsilon_{n}\right]=0,  \operatorname{Var}\left[\epsilon_{n}\right]=\sigma^{2}$. 
+
+`lm` in R, provides confidence intervals based on this model.
+
+The variance/covariance matrix of $\hat{\beta}_{O L S}\left(Y_{1: N}\right)$ under this model is 
+\[
+\operatorname{Cov}\left[\hat{\beta}_{O L S}\left(Y_{1: N}\right)\right]=\sigma^{2}\left(Z^{\mathrm{T}} Z\right)^{-1}
+\]
+and is estimated using an estimator for $\sigma$ by 
+\[
+\hat{\sigma}_{O L S}\left(y_{1: N}\right)=\sqrt{\frac{1}{N-d}\left(y-Z \hat{\beta}_{O L S}\right)^{\mathrm{T}}\left(y-Z \hat{\beta}_{O L S}\right)}
+\]
+$d$ is the number of covariates, i.e., the number of columns of $Z$.
+```{r}
+acf(resid(lm_fit))
+```
+The *horizontal dashed lines* on the graph of the sample autocorrelation function (ACF) give **a measure of chance variation under the null hypothesis that the residuals are IID**.
+
+At each lag h, the chance that the estimated ACF falls within this band is approximately $95\%$. Thus, under the null hypothesis, one expects a fraction of $1/20$ of the lags of the sample ACF to fall outside this band.
+
+However, the sample ACF confirms what we can probably see from the plot of the fitted model: the variation around the fitted model is **clustered in time**, so the sample ACF of the residuals is not consistent with a model having independent error terms.
+
+### Generalized least squares
+
+If we know the covariance matrix, $\Gamma4, for a model with dependent errors, 
+\[
+Y=Z \beta+\zeta, \quad \zeta \sim N[0, \Gamma]
+\]
+$\zeta$ follows a multivariate normal distribution with mean zero and covariance matrix $\Gamma$.
+
+The minimum variance unbiased estimator of $\beta$ for this model is
+\[
+\hat{\beta}_{G L S}\left(y_{1: N}\right)=\left(Z^{\mathrm{T}} \Gamma^{-1} Z\right)^{-1} Z^{\mathrm{T}} \Gamma^{-1} y
+\]
+and the variance of $\beta$ is 
+\[
+\operatorname{Var}\left[\hat{\beta}_{O L S}\left(Y_{1: N}\right)\right]=\left(Z^{\mathrm{T}} Z\right)^{-1} Z^{\mathrm{T}} \Gamma Z\left(Z^{\mathrm{T}} Z\right)^{-1}
+\]
+
+The OLS estimator remains unbiased for this model, but it's often a practical solution to use the OLS estimator, expecially for preliminary data analysis.  We  can’t necessarily make a good estimator based on the GLS model *unless* we know $\Gamma$.
+
+It is okay to do ordinary linear regression for data which are not well modeled with uncorrelated errors. However, if we do so, we should not trust the **error estimates** coming from L1.
+
+

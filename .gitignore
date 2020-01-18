@@ -1,3 +1,9 @@
+# mac FS config
+*.DS_Store
+
+# Rmarkdown preview
+*.nb.html
+
 # History files
 .Rhistory
 .Rapp.history
