@@ -1,0 +1,24 @@
+---
+title: "R Miscellaneous"
+output: html_notebook
+---
+
+### `qnorm()`
+
+Reference at https://homerhanumat.github.io/tigerstats/qnorm.html.
+
+```{r}
+qnorm(p, mean = 0, sd = 1, lower.tail = TRUE, log.p = FALSE)
+```
+
+Given an area, `qnorm()` finds the boundary value that determines this area. If mean or sd are not specified they assume the default values of 0 and 1 respectively.
+
+For example, 
+```{r}
+qnorm(0.975)
+```
+means $P(x\leq1.645) = 0.95$. We can check this with `pnormGC()`, which does the opposite work (from value to probability):
+```{r}
+pnormGC(1.959964,region="below",graph=TRUE)
+```
+
