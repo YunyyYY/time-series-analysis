@@ -1,0 +1,267 @@
+---
+title: "Chapter 3. Stationarity, white noise, and some basic time series models"
+output:
+  html_document:
+    df_print: paged
+---
+
+### Weak stationarity and strict stationarity
+
+A time series model which is both **mean stationary** and **covariance stationary** is called **weakly stationary**.
+
+A time series model for which all joint distributions are invariant to shifts in time is called **strictly stationary**. For any collection of times $(t_1,t_2,...,t_K)$, the joint distribution of observations at these times should be the same as the joint distribution at $(t_1 + \tau,t_2 +\tau,...,t_K +\tau)$ for any $\tau$. If observations are equally spaced, for any collection of timepoints $n_1, ...n_K$ and for any lag $h$, the joint density function of $(Y_{n_1}, ... Y_{n_K})$ is the *same* as the joint density function $(Y_{n_1+h}, ... Y_{n_K+h})$.
+
+Strict stationarity implies weak stationarity.
+
+#### How could we assess whether a weak stationary model is appropriate for a time series dataset?
+Plot the data and look visually for evidence of a trend as a violation of mean stationary. Compare variablility over different time intervals; <span style='color:#f34718'>covariance stationary implies constant variance</span>.
+
+#### How could we assess whether a strictly stationary model is appropriate for a time series dataset?
+Not practical. We can check some moments look stable through time, which indicates weak stationary, but we can't check all moments (even this is not enough).
+
+Often there is a trend or some nonstationary behavior. But stationary models use fewer parameters and can be more practical. Thus we try to transform data to look stationary.
+
+A seemingly non-stationary series may be a slice from a seemingly stationary series:
+
+```{r}
+N <- 500
+times <- 1:N
+T1 <- 120
+T2 <- 37
+set.seed(73413)
+y <- sin(2*pi*(times/T1 + runif(1))) +   sin(2*pi*(times/T2 + runif(1))) + rnorm(N)
+x <- y[1:50]
+oldpars <- par(mfrow=c(1,2))
+plot(x,ty="l",xlab="")
+plot(y,ty="l",xlab="")
+par(oldpars)  # used to personalize the attrirbutes of plot()
+```
+
+
+### White noise
+
+A time series model $\epsilon_{1:N}$ which is weakly stationary with
+\begin{eqnarray} \nonumber
+\mathbb E[\epsilon_n]&=& 0 
+\\ 
+\nonumber
+\operatorname{Cov}(\epsilon_m,\epsilon_n) &=& \left\{\begin{array}{ll}
+  \sigma^2, & \mbox{if $m=n$} \\
+   0, & \mbox{if $m\neq n$} \end{array}\right. ,
+\end{eqnarray}
+is said to be **white noise** with variance $\sigma^2$.
+
+White noise in audio: produce static sound. Bcause it has a flat spectral density, with the same amplitude throughout the audible frequency range. All freqencies are equally represented.
+
+#### Gaussian white noise
+A sequence of independent identically distributed (IID) Normal random variables with mean zero and variance $\sigma^2$, $\epsilon_{1:N}\sim\operatorname{IID} N [0, \sigma^2]$.
+
+#### Binary white noise
+
+Let $\epsilon_{1:N}$ be IID with
+\begin{eqnarray}
+\nonumber
+\epsilon_n = \left\{\begin{array}{ll}
+  1, & \mbox{with probability $1/2$} \\
+  -1, & \mbox{with probability $1/2$} \end{array}\right. .
+\end{eqnarray}
+$\mathbb E[\epsilon_n]=0$, $\operatorname{Var}(\epsilon_n)=1$ and $\operatorname{Cov}(\epsilon_m,\epsilon_n)=0$ for $m\neq n$. Therefore, $\epsilon_{1:N}$ is white noise. 
+
+For any $p\in (0,1)$, we could have 
+\begin{eqnarray}
+\nonumber
+\epsilon_n = \left\{\begin{array}{ll}
+  (1-p)/p, & \mbox{with probability $p$} \\
+  -1, & \mbox{with probability $1-p$} \end{array}\right. .
+\end{eqnarray}
+
+#### Sinusoidal white noise
+Let $\epsilon_n = \sin(2\pi n U)$, with a single draw $U\sim\mathrm{Uniform}[0,1]$ determining the time series model for all $n\in 1:N$.
+
+```{r}
+ns = 1:200
+us = runif(ns, min = 0, max = 1)
+ys = sin(2*pi*ns*us)
+plot(ns, ys, type="l")
+```
+
+**Question**: <span style='color:#f34718'>
+Show that $\epsilon_{1:N}$ is weakly stationary and is white noise, but NOT strictly stationary:
+</span>
+
+A counter example: e.g., $\mathbb P[\epsilon_2=0 \text{ given } \epsilon_1=1]=1$, whereas  $\mathbb P[\epsilon_3=0 \text{ given }\epsilon_2=1]=0$
+
+### The AR($p$) autoregressive model
+The order $p$ autoregressive model, abbreviated to AR($p$), is
+\[
+\quad\quad \quad Y_n = \phi_1 Y_{n-1}+\phi_2Y_{n-2}+\dots+\phi_pY_{n-p} + \epsilon_n
+\]
+If $\{\epsilon_n\}$ is a Gaussian white noise process, it is called the Gaussian AR(p) model.
+
+M1 is a **stochastic difference equation**. It is a difference equation (also known as a recurrence relation) since each time point is specified recursively in terms of previous time points.
+
+To complete the model, we need to **initialize** the solution to the stochastic difference equation. Supposing we want to specify a distribution for $Y_{1:N}$, we have some choices in how to set up the initial values:
+
+- We can specify $Y_{1:p}$ explicitly, to get the recursion started.
+
+- We can specify $Y_{1-p:0}$ explicitly. ($1-p$ here means a sequence before $Y_{1:p}$ which is *cut* after $Y_{1:p}$ generated.)
+
+- For either of these choices, we can define these initial values either to be additional parameters in the model (i.e., not random) or to be specified random variables.
+
+- **Common practice**: if we want our model to be strictly stationary, we must initialize so that $Y_{1:p}$ have the proper joint distribution for this stationary model.
+
+For example, define $M2: Y_n = 0.6 Y_{n-1}+ \epsilon_n$, where $\{\epsilon_n\}\sim \operatorname{IID}N[0, 1]$.
+
+```{r}
+set.seed(123456789)
+ar1 <- arima.sim(list(ar=0.6),n=100,sd=1)
+# ar -- indicates the coefficient for auto-regressive part
+# n  -- length of output series before un-differencing. Strictly positive.
+plot(ar1,type="l")
+```
+
+`sd` is the standard deviation of `rand.gen`, default by `rnorm`. 
+
+Another way is to generate the series directly:
+
+```{r}
+set.seed(123456789)
+N <- 100
+X <- numeric(N)
+X[1] <- rnorm(1,sd=1.56)
+for(n in 2:N) X[n] <- 0.6 * X[n-1] + rnorm(1)
+plot(X,type="l")
+```
+
+This looks similar to the arima.sim simulation, except near the start. This is because `arima.sim` use innovations foor the burn-in period of the time series. Burn-in is a colloquial term that describes the practice of throwing away some iterations at the beginning of an MCMC run. `rnorm` is the default function used to generate the innovations.
+
+**Question**: compute the autcovariance function for model M2.
+\[
+\begin{aligned}
+Y_n &= 0.6Y_{n-1} + \epsilon_n \\
+&= 0.6(0.6Y_{n-2} + \epsilon_{n-1}) + \epsilon_n \\
+&= ...
+\end{aligned}
+\]
+In the stationary case, $Y_n = \sum_{k=0}^{\infty}(0.6)^k\epsilon_{n-k}$. <span style='color:#f34718'>By stationary, we can talk about the distribution at negative values of $n$</span>. 
+\[
+\begin{aligned}
+\mathcal Y_h &= \operatorname{Cov}\left(\sum_{l=0}^{\infty}0.6^l\epsilon_{n+h-l}, \sum_{k=0}^{\infty}0.6^k\epsilon_{n-k}\right) \\
+&= \sum_{k=0}^{\infty}\sum_{l=0}^{\infty}0.6^{l+k}\operatorname{Cov}\left(\epsilon_{n+h-l},\epsilon_{n-k}\right) 
+\end{aligned}
+\]
+Since $\epsilon$ is white noise, the covariance is **nonzero only when $l-h = k$**, where the covaraince (variance, actually) is $1$. Therefore,
+\[
+\begin{aligned}
+\mathcal Y_h &= \sum_{k=0}^{\infty}0.6^{h+2k} \\
+&= \frac{0.6^h}{1-0.6^2} \\ 
+&= 0.6^h \times 1.56, \qquad h>0
+\end{aligned}
+\]
+
+### The MA($q$) moving average model
+The order q moving average model, abbreviated to MA($q$), is
+\[
+Y_n =  \epsilon_n +\theta_1 \epsilon_{n-1} +\dots+\theta_q\epsilon_{n-q}
+\]
+where $\epsilon$ is a white noise process.
+
+To fully specify $Y_{1:N}$ we must specify the joint distribution of $\epsilon_{1-q:N}$. Often, we consider the **Gaussian MA(q)** model, where  $\{\epsilon_n\}$ is a Gaussian white noise process. 
+
+For example, define $M4: Y_n = \epsilon_n + 1.5\epsilon_{n-1}+\epsilon_{n-2}$, where $\epsilon_n\sim \operatorname{IID} N[0,1]$.
+
+```{r}
+N <- 100
+set.seed(123456789)
+X1 <- arima.sim(list(ma=c(1.5,1)),n=N,sd=1) 
+set.seed(123456789)
+epsilon <- rnorm(N+2)
+X2 <- numeric(N)  # create an arra of length N, each is 0
+for(n in 1:N) X2[n] <- epsilon[n+2]+1.5*epsilon[n+1]+epsilon[n]
+plot(X1,type="l") ; plot(X2,type="l")
+```
+
+We can check that $X1$ and $X2$ are identical:
+
+```{r}
+all(X1==X2)
+```
+
+### The random walk model
+
+The random walk model is 
+\[
+Y_n = Y_{n-1} + \epsilon_n
+\]
+where $\{\epsilon_n\}$ is white noise. Unless otherwise specified, we usually initialize with $Y_0=0$. If $\{\epsilon_n\}$ is Gaussian white noise, then we have a Gaussian random walk. The random walk model is a special case of AR(1) with $\phi_1=1$. This **stochastic difference equation** has an exact solution \[ Y_n = \sum_{k=1}^n\epsilon_k\]
+We can also call $Y_{0:N}$ an **integrated white noise process**. If data ${y_{1:N}}$ are *modeled as* a random walk, the value of $Y_0$ is usually an <span style='color:#f34718'>unknown</span>. Rather than introducing an unknown parameter to our model, we may initialize our model at time $t_1$ with $Y_1={y_1}$.
+
+#### Random walk model with drift
+
+The random walk with drift model is defined by \[Y_n = Y_{n-1} + \mu + \epsilon_n,\] driven by a white noise process $\{\epsilon_n\}$. It has solution \[Y_n = Y_0 + n\mu + \sum_{k=1}^n\epsilon_k.\]
+Here, $\mu$ is <span style='color:'>the mean of increments, NOT of the random walk process itself</span>. For this model, we **must** define $Y_0$ to initialize the model and complete the model specification. Unless otherwise specified, we usually initialize with $Y_0=0$.
+
+**Questoin**: compute the mean and covariance functions for the
+random walk model with and without drift.
+
+For random walk with drift, if $Y_0 = y_0$, 
+\[
+\mu_Y(n) = n\mu + y_0
+\]
+
+### Example: modeling financial markets as a random walk
+
+It is suggested that the logarithm of a stock market index (or, for that matter, the value of an individual stock or other investment) might behave like a random walk with drift. We can test this on an example dataset:
+
+```{r}
+dat <- read.table("data/sp500.csv",sep=",",header=TRUE)
+N <- nrow(dat)
+sp500 <- dat$Close[N:1] # data are in reverse order in sp500.csv par(mfrow=c(1,2))
+plot(sp500,type="l")
+plot(log(sp500),type="l")
+```
+
+We can compare the data with simulations from a fitted model. A simple starting point is a Gaussian random walk with drift with parameters estimated from the data:
+
+```{r}
+mu <- mean(diff(log(sp500)))
+sigma <- sd(diff(log(sp500)))
+set.seed(95483123)
+X1 <- log(sp500[1])+cumsum(c(0,rnorm(N-1,mean=mu,sd=sigma)))
+# cumsum() is cumulated sum of array c()
+# c() is of length N, 0 and N-1 from rnorm()
+set.seed(324324587)
+X2 <- log(sp500[1])+cumsum(c(0,rnorm(N-1,mean=mu,sd=sigma)))
+par(mfrow=c(1,2))
+plot(X1,type="l") ; plot(X2,type="l")
+par(mai=c(0.8,0.5,0.1,0.1))
+```
+
+It seems reasonable so far. Next, plot the autocorrelation function of `diff(log(sp500))`:
+
+```{r}
+acf(diff(log(sp500)))
+```
+
+<span style='color:#126bae'>It is bad style to refer to quantities using computer code notation. We should set up mathematical notation in the text. In a MIDTERM project, it is better to code as follow:</span>
+
+Let $z_n = \log y_n - \log y_{n-1}$. The temporal di↵erence of the log of the value of an investment is called the return on the investment. Plot $z_{2:N}$, 
+```{r}
+z <- diff(log(sp500))
+acf(z)
+```
+
+The length of the time series be relevant when considering **practical versus statistical significance**. For small datasets, small effects of no practical significance will also usually be statically insiginificant.
+
+It seems the S&P 500 returns (centered, by subtracting the sample mean) may be a real-life time series well modeled by white noise. However, things become less clear when we look at the **absolute value of the centered returns**:
+
+```{r}
+acf(abs(z-mean(z)),lag.max=200)
+```
+
+It seems the magnitues are correlated, though actual values are not. This contradicts independent white noise as a model. It doesn't contradict a weak white noise assumption of uncorellation at lags $h>0$.
+
+
+ 
+ 
+

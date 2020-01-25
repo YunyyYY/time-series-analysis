@@ -22,3 +22,16 @@ means $P(x\leq1.645) = 0.95$. We can check this with `pnormGC()`, which does the
 pnormGC(1.959964,region="below",graph=TRUE)
 ```
 
+### `rnorm`
+```{r}
+rnorm(n=5,sd=1.56)
+```
+
+Used to generate `n` numbers from a normal distribution of zero mean and standard deviation `sd`.
+
+
+
+
+
+
+
