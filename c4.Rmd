@@ -1,0 +1,130 @@
+---
+title: "Chapter 4. Linear time series models and the algebra of ARMA models"
+output:
+  html_document:
+    df_print: paged
+---
+
+### Stationary causal linear process
+A **stationary causal linear process** is a time series models that can be written as
+
+\[
+Y_n = \mu + g_0\epsilon_n + g_1\epsilon_{n-1}+g_2\epsilon_{n-2}+g_3\epsilon_{n-3} + g_4\epsilon_{n-4}+\dots
+\]
+
+where $\{\epsilon_n, n=\dots,-2,-1,0,1,2,\dots\}$ is a white noise process, defined for all integer timepoints, with variance $\operatorname{Var}(\epsilon_n)=\sigma^2$. It is also the MA$(\infty)$ model. We do not need to define any initial values. The **doubly infinite noise process** is enough to define $Y_n$ for every $n$ as long as the sequence in $Y_n$ converges.  It is **stationary** since the construction is the same for each $n$.
+
+If the white noise process is strict stationary, e.g., IID white noise, $Y_n$ is strict stationary. If only has constant mean and shift-invariant covariance, it is weak stationary.
+
+#### Autocovariance function for a linear process
+\[
+\gamma_h = \operatorname{Cov}(Y_n,Y_{n+h}) = \sum_{j=0}^\infty g_jg_{j+h} \sigma^2, \mbox{for $h\ge 0$}.
+\]
+
+In order for this autocovariance function to exist, we need
+$$\sum_{j=0}^\infty g_j^2 < \infty.$$
+
+In the derivation, there is an assumption that move $\sum_{j=0}^\infty \sum_{k=0}^\infty$ through $\operatorname{Cov}$ is okay. <font color='orangered'>The interchange of expectation and infinite sums can't be taken for granted. </font>
+$\operatorname{Cov}\left(\sum_{i=1}^m X_i,\sum_{j=1}^n Y_j\right)=\sum_{i=1}^m\sum_{j=1}^n\operatorname{Cov}(X_i,Y_j)$ is true for finite $m$ and $n$, but not necessarily for infinite sums.
+
+### The backshift operator $B$ and the difference operator $\Delta$
+
+The backshift operator B, also known as the lag operator, \[ B Y_n = Y_{n-1}\] is a **linear operator**.
+
+The difference operator $\Delta=1-B$ is \[\Delta Y_n = (1-B)Y_n = Y_n - Y_{n-1}\]
+
+Recall the AR$(p)$ model is defined as \[Y_n = \phi_1Y_{n-1} + ... + \phi_pY_{n-p} + \epsilon_n.\] Define an order $p$ polynomial $\phi(x)= 1-\phi_1 x -\phi_2 x^2 -\dots -\phi_p x^p$, we can rewrite AR$(p)$ model as \[ \phi(B) Y_n = \epsilon_n.\]
+
+Recall the MA$(q)$ model is defined as \[Y_n = \epsilon_n + \theta_1\epsilon_{n-1} + ... + \theta_q\epsilon_{n-q}.\] Define an order $q$ polynomial $\psi(x) = 1+\psi_1 x +\psi_2 x^2 + \dots +\psi_q x^q$, the MA$(q)$ model is equivalent to \[Y_n = \psi(B)\epsilon_n.\]
+
+If $g(x)$ is a function defined by the Taylor series expansion
+$$g(x)= g_0 + g_1 x + g_2 x^2 + g_3 x^3 + g_4 x^4 + \dots,$$ we can write the stationary causal linear process equation as $Y_n = \mu + g(B)\epsilon_n$.
+
+### ARMA$(p,q)$
+
+Put together AR and MA model, we have the **autoregressive moving average** ARMA$(p,q)$ model given by \[Y_n = \phi_1 Y_{n-1}+\phi_2Y_{n-2}+\dots+\phi_pY_{n-p} + \epsilon_n +\psi_1 \epsilon_{n-1} +\dots+\psi_q\epsilon_{n-q},\] where $\{ \epsilon_n\}$ is a white noise process. Using the backshift operator, we have \[\phi(B)Y_n = \psi(B)\epsilon_n.\] In general, if the mean of $Y_n$ is nonzero, the equation is \[\phi(B)(Y_n-\mu) = \psi(B)\epsilon_n.\]
+
+#### MA$(\infty)$ representation of ARMA model
+For the ARMA$(1, 1)$ model $Y_n = \phi Y_{n-1} - \epsilon_n + \psi \epsilon_{n-1}$, we can write \[
+\begin{aligned}
+(1-\phi B)Y_n &= (1+\psi B)\epsilon_n \\
+Y_n &= \frac{1+\psi B}{1-\phi B}\epsilon_n \\
+&= g(B)\epsilon_n, \qquad \text{define }g(x) = \frac{1+\psi B}{1-\phi B}
+\end{aligned}
+\]
+By the Taylor expasion of $g(x)$, we get the MA$(\infty)$ representation. 
+
+We say that the ARMA model is **causal** if its MA$(\infty)$ representation is a convergent series.
+
+#### Causality and invertibility
+
+To assess causality, consider the convergence of the Taylor series expansion of $\psi(x)/\phi(x)$ in the ARMA representation \[Y_n = \frac{\psi(x)}{\phi(x)}\epsilon_n;\]
+
+To assess invertibility, consider the convergence of the Taylor series expansion of $\phi(x)/\psi(x)$ in the inverse of the ARMA model \[\epsilon_n = \frac{\phi(x)}{\psi(x)}Y_n.\]
+
+**Theorem**
+
+The ARMA model is **causal** if the AR polynomial $\phi(x)$ has all roots **outside the unit circle** in the complex plane. The ARMA model is **invertible** if the MA polynomial $\psi(x)$ has all roots **outside the unit circle** in the complex plane. 
+
+We can check the roots using the `polyroot` function in R. For example,
+```{r}
+roots <- polyroot(c(1,2,2))  # represents \psi(x) = 1 + 2x + 2x^2
+roots
+```
+Check its position w.r.t the unit circle by their absolute values,
+```{r}
+abs(roots)
+```
+
+It's undesirable to use a *non-invertible* model for data analysis. <font color='#ed5a65'>Non-invertible models* give numerically unstable estimates of residuals</font>.
+
+### Reducible and irreducible ARMA models
+
+The ARMA model can be viewed as a ration of two polynomials, \[Y_n = \frac{\phi(B)}{\psi(B)}\epsilon_n.\] If the two polynomials share a common factor, it can be canceled out without changing the model.
+
+By the **fundamental theorem of algebra**, the polynomial of degree $p$ can be written as \[(1-\frac{x}{\lambda_1}) \times (1-\frac{x}{\lambda_2}) \times \dots \times (1-\frac{x}{\lambda_p}),\] where $\lambda_{1:p}$ are $p$ rootes of the polynomial. The Taylor series expansion of $\phi(B)^{-1}$ is convergent if and only if for all $i\in 1:p$, $(1-B\lambda_i)^{-1}$ has a conveergent expansion. This happens if $|\lambda_i|>1$ for all $i$.
+
+### Deterministic skeletons
+
+The **deterministic skeleton** of a time series model is the non-random process obtained by removing randomness from a stochastic model. For a discrete-time model, we can define a continuous-time deterministic skeleton by **replacing the discrete-time diserence equation with a differential equation**. Rather than deriving a deterministic skeleton from a stochastic time series model, we can work in *reverse*: <font color='royalblue'>we add stochasticity to a deterministic model to get a model that can explain non-deterministic phenomena</font>.
+
+For example, a differential equation given by \[\frac{d^2}{dt^2} x(t) = -\omega^2 x(t).\] Its a discrete version is a deterministic linear diserence equation, replacing $d^2/dt^2$ by the second difference operator, $\Delta^2 = (1-B)^2$. This leads to \[\Delta^2 y_n = - \omega^2 y_n.\] Adding white nosie and expand $\Delta^2 = (1-B)^2$, we get a stochastic model \[Y_n = \frac{2}{1+\omega^2}Y_{n-1} - \frac{1}{1+\omega^2}Y_{n-2}  + \epsilon_n.\] It is reasonable to regard it as a good candidate to describe systems that have *semi-regular but somewhat erratic fluctuations*, called **quasi-periodic** behavior. Such behavior is evident in business cycles or wild animal populations.
+
+**Example**
+
+Simulation with $\omega = 0.1$ and $\epsilon_n \sim \mathrm{IID}\ N [0, 1]$. From our exact solution to the deterministic skeleton, we expect that the period of the oscillations should be approximately $\omega/2\pi$.
+```{r}
+omega <- 0.1
+ar_coefs <- c(2/(1+omega^2), - 1/(1+omega^2))
+X <- arima.sim(list(ar=ar_coefs),n=500,sd=1)
+par(mfrow=c(1,2))
+plot(X)
+plot(ARMAacf(ar=ar_coefs,lag.max=500),type="l",ylab="ACF of X")
+# ARMAacf compute theoretical ACF for an ARMA process
+```
+
+Quasi-periodic fluctuations are said to be **phase locked** as long as
+the <font color='royalblue'>random peturbations are not able to knock the oscillations away from being close to their initial phase</font>.
+
+Eventually, the randomness should mean that the process is equally likely to have any phase, regardless of the initial phase.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
