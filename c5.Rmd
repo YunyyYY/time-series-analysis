@@ -1,0 +1,295 @@
+---
+title: "Chapter 5. Parameter estimation and model identification for ARMA models"
+output:
+  html_document: 
+    df_print: kable
+    fig_caption: yes
+    toc: yes
+---
+
+### Likelihood-based inference
+For any data ${y_{1:N}}$ and any probabilistic model $f_{Y_{1:N}}(y_{1:N};\theta)$ we define the likelihood function
+\[\mathcal L(\theta) = f_{Y_{1:N}}({y_{1:N}};\theta)\]
+It is often convenient to work with its logarithm, which is order-preserving,
+\[\ell(\theta) = \log \mathcal L(\theta)\]
+
+#### Maximum likelihood estimator (MLE)
+
+\[\hat\theta(y_{1:N}) = \arg\max_\theta f_{Y_{1:N}}(y_{1:N};\theta)\]
+
+Quantify statistical unceortainty in an MLE:
+
+1. Fisher information.
+2. Profile likelihood estimation. 
+3. Simulation study (bootstrap). If done carefully and well, the best approach.
+
+### Standard errors via the observed Fisher information
+
+The **Hessian matrix** of a function is the matrix of its second partial derivatives. Suppose that $\theta\in\mathbb R^D$ and write $\theta=\theta_{1:D}$, the Hessian matrix of the log likelihood function is $\nabla^2\ell(\theta)$, a $D\times D$ matrix whose $(i,j)$ element is
+\[\big[\nabla^2\ell(\theta)\big]_{ij} =  \frac{\partial^2}{\partial\theta_i\partial\theta_j}\ell(\theta)\]
+
+The observed Fisher information is defined as \[{\hat{I}} = - \nabla^2\ell({\hat\theta}),\] and a standard asymptotic approximation to the distribution of the MLE *for large N is* \[\hat\theta(Y_{1:N}) \approx N\left[\theta, [{\hat{I}}]^{-1}\right].\] This asserts that the MLE is asymptotically unbiased, with variance asymptotically attaining the *Cramer-Rao lower bound*.
+
+A corresponding approximate $95\%$ confidence interval for $\theta_d$ is ${\hat\theta_d} \pm 1.96 \big[{{\hat{I}}}^{-1}\big]_{dd}^{1/2}$. The R function `arima` computes standard errors for the MLE of an ARMA model in this way.
+
+We usually only have one time series, with some fixed $N$, and so we cannot in practice take $N \rightarrow\infty$. When our time series model is non-stationary it may not even be clear what it would mean to take $N \rightarrow\infty$. These asymptotic results should be viewed as nice mathematical reasons to consider computing an MLE, but not a substitute for checking how the MLE behaves for our model and data.
+
+### Confidence intervals via the profile likelihood
+ 
+Let $\theta_d$ be the $d$th component of $\theta_{1:D}$. The **profile log likelihood function** of $\theta_d$ is defined to be \[\ell_{d}^{\mathrm{profile}}(\theta_d) = \max_{\phi\in\mathbb R^D: \phi_d=\theta_d}\ell(\phi)\]
+Intuitively the profile is the simulate of the "mountain range" of the log likelihood in dimension $d$.
+
+In general, the profile likelihood of one parameter is constructed by maximizing the likelihood function over all other parameters. 
+
+An approximate $95\%$ confidence interval for $\theta_d$ is given by \[\{\theta_d:\ell(\hat\theta) - \ell_{d}^{\mathrm{profile}}(\theta_d) < 1.92\}\]
+The cutoff 1.92 is derived using **Wilks’s theorem**. It is half of the chi-square value of 3.84 with 1 degree of freedom. Note that $1.92 = 1.96^2/2$.
+
+Profile CI for $\log\theta$ is the log of profile CI for $\theta$, but this is not true for fisher CI.
+
+Profile likelihood confidence intervals tend to work better than Fisher
+information confidence intervals when N is not so large—particularly
+when the log likelihood function is not close to quadratic near its
+maximum.
+
+### Bootstrap method
+Design a simulation study with the following goals:
+
+- Evaluate the coverage of a proposed confidence interval estimator, $[\hat\theta_{1,\mathrm{lo}},\hat\theta_{1,\mathrm {hi}}]$
+- Construct a standard error for $\hat\theta_1$
+- Construct a confidence interval for $\hat\theta_1$ with exact local coverage
+
+#### A simulation study
+
+1. Generate $J$ independent Monte Carlo simulations, \[Y_{1:N}^{[j]} \sim f_{Y_{1:N}}(y_{1:N};{\hat\theta}) \mbox{ for } j\in 1:J\]
+2. For each simulation, evaluate the maximum likelihood estimator \[\hat\theta^{[j]} = \hat\theta\big(Y_{1:N}^{[j]}\big)\mbox{ for } j\in 1:J\] and  if desired, the confidence interval estimator \[\big[\hat\theta^{[j]}_{1,\mathrm lo},\hat\theta^{[j]}_{1,\mathrm hi}\big] = \big[\hat\theta_{1,\mathrm lo}({Y^{[j]}_{1:N}}),\hat\theta_{1,\mathrm hi}({Y^{[j]}_{1:N}})\big]\]
+3. For large $J$, the coverage of the proposed confidence interval is well approximated, for models in a neighborhood of ${\hat\theta}$, by the proportion of the intervals $\big[\hat\theta^{[j]}_{1,\mathrm lo},\hat\theta^{[j]}_{1,\mathrm hi}\big]$ that include ${\hat\theta_1}$.
+4. The sample standard deviation of $\{\hat\theta^{[j]}_1, j\in 1:J\}$ is a natural standard error to associate with ${\hat \theta_1}$.
+
+### Likelihood ratio tests for nested hypotheses
+
+#### Nested hypothesis
+
+Let S be the set of all possibilities that satisfy hypothesis $H$, and let $S'$ be the set of all possibilities that satisfy hypothesis $H'$. Then $H'$ is a nested hypothesis within $H$ iff $S' \subset S$, where $\subset$ denotes the <font color='royalblue'>proper subset</font> (a subset that is <i>strictly</i> contained in $S$ and so necessarily <i>excludes at least one member of</i> $S$.).
+
+#### Wilks approximation
+
+The whole parameter space on which the model is defined is $\Theta\subset\mathbb R^D$. Suppose two nested hypothesis \[
+\begin{eqnarray*}
+H^{\langle 0\rangle} &:& \theta\in \Theta^{\langle 0\rangle},
+\\
+H^{\langle 1\rangle} &:& \theta\in \Theta^{\langle 1\rangle},
+\end{eqnarray*}
+\] defined via two nested parameter subspaces, $\Theta^{\langle 0\rangle}\subset \Theta^{\langle 1\rangle}$, with respective dimensions $D^{\langle 0\rangle}< D^{\langle 1\rangle}\le D$. Consider the log likelihood maximized over each of the hypotheses, \[
+\begin{eqnarray*}
+\ell^{\langle 0\rangle} &=& \sup_{\theta\in \Theta^{\langle 0\rangle}} \ell(\theta),
+\\
+\ell^{\langle 1\rangle} &=& \sup_{\theta\in \Theta^{\langle 1\rangle}} \ell(\theta).
+\end{eqnarray*}
+\] The **Wilks approximation** asserts that **under the hypothesis $H^{\langle 0\rangle}$**, \[\ell^{\langle 1\rangle} - \ell^{\langle 0\rangle} \approx (1/2) \chi^2_{D^{\langle 1\rangle}- D^{\langle 0\rangle}}, \] where $\chi^2_{D^{\langle 1\rangle}- D^{\langle 0\rangle}}$ is a chi-squared random variable with $D^{\langle 1\rangle}- D^{\langle 0\rangle}$ degrees of freedom. This can be used to construct a hypothesis test of the null hypothesis  $H^{\langle 0\rangle}$ against the alternative  $H^{\langle 1\rangle}$. 
+
+This is called a likelihood ratio test since a difference of log
+likelihoods corresponds to a ratio of likelihoods. When the data are IID, $N\to\infty$, and the hypotheses satisfy suitable regularity conditions, this approximation can be derived mathematically and is known as **Wilks's theorem**. 
+
+Duality between hypothesis tests and confidence intervals: \[
+\begin{array}{c}
+\text{The estimated parameter }\theta \text{ does not lead us to reject a null hypothesis of } \theta=\theta^{\langle 0\rangle} \text{at the 5% level;} \\
+\Updownarrow \\
+\theta^{\langle 0\rangle} \text{ is in a 95% confidence interval for }\theta
+\end{array}
+\]
+
+The 95% cutoff for a chi-squared distribution with one degree of freedom is
+```{r}
+qchisq(0.95,df=1)
+```
+which explains why the Wilks approximation suggests a confidence interval constructed from parameter values having a profile likelihood within 1.92 log units of the maximum.
+
+### Akaike’s information criterion (AIC)
+
+What if the models are not nested?
+
+A more general approach is to compare likelihoods of different models by **penalizing the likelihood of each model by a measure of its complexity**.
+ 
+Akaike’s information criterion AIC is given by \[AIC = -2\times\ell(\theta) + 2D\]
+
+AIC was derived as an approach to minimizing prediction error. Increasing the number of parameters leads to additional overfitting which can decrease predictive skill of the fitted model. We want to select the model with the **lowest AIC score**.
+
+Model favored by ACI cannot be interpreted as a superior explanation of the data. AIC is viewed as a way to select a model with reasonable predictive skill from a range of possibilities.
+
+### Likelihood-based inference in R
+Data: monthly time series data on the depth of Lake Huron.
+
+```{r}
+dat <- read.table(file="data/huron_depth.csv",sep=",",header=TRUE)
+dat$Date <- strptime(dat$Date,"%m/%d/%Y")
+dat$year <- as.numeric(format(dat$Date, format="%Y"))
+dat$month <- as.numeric(format(dat$Date, format="%m"))
+head(dat,3)
+```
+
+At present, let's avoid monthly seasonal variation by considering an annual
+series of January depths.
+
+```{r}
+dat <- subset(dat,month==1)
+huron_depth <- dat$Average
+year <- dat$year
+plot(huron_depth~year,type="l")
+```
+
+#### Fitting an ARMA model
+
+First,start by fitting a stationary ARMA$(p, q)$ model under the **null hypothesis that there is no trend**. We seek to fit a stationary Gaussian ARMA$(p,q)$ model with
+parameter vector $\theta=(\phi_{1:p},\psi_{1:q},\mu,\sigma^2)$ given by \[
+\phi(B)(Y_n-\mu) = \psi(B) \epsilon_n
+\] where \[
+\begin{aligned}
+\mu &= \mathbb E[Y_n]
+\\
+\phi(x)&= 1-\phi_1 x-\dots -\phi_px^p,
+\\ 
+\psi(x)&= 1+\psi_1 x+\dots +\psi_qx^q, 
+\\
+\epsilon_n&\sim \mathrm{ iid }\, N[0,\sigma^2].
+\end{aligned}
+\]
+
+#### Choose $p$ and $q$
+
+We tabulate AIC values for a range of different choices of $p$ and $q$.
+
+```{r}
+options(warn=-1)  # disable the warnings
+aic_table <- function(data,P,Q){
+  table <- matrix(NA,(P+1),(Q+1))
+  for(p in 0:P) {
+    for(q in 0:Q) {
+      table[p+1,q+1] <- arima(data,order=c(p,0,q))$aic
+    }
+  }
+  dimnames(table) <- list(paste("AR",0:P, sep=""),paste("MA",0:Q,sep=""))
+  table
+}
+huron_aic_table <- aic_table(huron_depth,4,5)
+require(knitr)
+kable(huron_aic_table,digits=2)
+```
+
+#### Interpreting the results in the above table of AIC values
+$(p, q) = (2, 1)$ has the lowest AIC, with various competitive AIC circled around. $(p, q) = (1, 0)$ is not worse by AIC butsimpler, which is a good thing, even though AIC has somewhat accounted for model size.
+
+We have to be careful not to over-interpret the results of this table. We should also look at <font color='darkpink'>diagnostic plots</font> for this models, outliers, other model misspecifications. As previously mentioned, we don't want to make strong claims about the best model found by AIC.
+
+Fit the ARMA$(2,1)$ model:
+```{r}
+huron_arma21 <- arima(huron_depth,order=c(2,0,1))
+huron_arma21
+```
+
+Examine the roots of the AR polynomial,
+```{r}
+AR_roots <- polyroot(c(1,-coef(huron_arma21)[c("ar1","ar2")]))
+AR_roots
+```
+
+The roots are outside the unit circle, suggesting we have a
+stationary causal fitted ARMA.
+
+```{r}
+MA_roots <- polyroot(c(1, coef(huron_arma21)[c("ma1")]))
+MA_roots
+```
+
+However, the MA root is −1, showing that the fitted model is at the threshold of non-invertibility. We can investigate if this non-invertibility is a problem using
+profile and bootstrap methods. The `arima` model provides standard error on the
+MA1 coefficient from the Fisher information approach, we can see if it is in agreement with the approximate confidence interval constructed using profile likelihoodmethod. <font color='purple'>To do this, we need to maximize the ARMA likelihood while fixing the MA1 coefficient at a range of values:</font>.
+```{r}
+K <- 500
+ma1 <- seq(from=0.2,to=1.1,length=K)
+profile_loglik <- rep(NA,K)
+for(k in 1:K){
+  profile_loglik[k] <- logLik(arima(huron_depth,order=c(2,0,1),
+                                    fixed=c(NA,NA,ma1[k],NA)))
+  # Parameters with `NA` entries in `fixed` are estimated.
+}
+plot(profile_loglik~ma1,ty="l")
+```
+
+The FIsher information CI corresponds to a quadratic approximation to the profile, whereas profile CI includes a whole of this interval. To check if the profile CI is reliable, we can do a simulation study.
+
+```{r}
+set.seed(57892330)
+J <- 1000
+params <- coef(huron_arma21)
+ar <- params[grep("^ar",names(params))]
+ma <- params[grep("^ma",names(params))]
+intercept <- params["intercept"]
+sigma <- sqrt(huron_arma21$sigma2)
+theta <- matrix(NA,nrow=J,ncol=length(params),
+                dimnames=list(NULL,names(params))) 
+for(j in 1:J){
+  Y_j <- arima.sim(
+      list(ar=ar,ma=ma), 
+      n=length(huron_depth), 
+      sd=sigma
+    )+intercept
+  theta[j,] <- coef(arima(Y_j,order=c(2,0,1)))
+}
+plot(density(theta[,"ma1"],bw=0.05))
+```
+
+<font color='green'>`arima` transforms the model to invertibility</font>. Thus, the estimated value of $\theta_1$ can only fall in the interval $[-1, 1]$.
+
+```{r}
+range(theta[,"ma1"])
+```
+
+We can use foreach to carry out a parallel for loop where jobs are sent to different processors.
+
+```{r}
+library(doParallel)
+registerDoParallel()
+J <- 1000
+huron_ar1 <- arima(huron_depth,order=c(1,0,0))
+params <- coef(huron_ar1)
+ar <- params[grep("^ar",names(params))]
+intercept <- params["intercept"]
+sigma <- sqrt(huron_ar1$sigma2)  # here sigma is fixed for simulation, actual value not know
+t1 <- system.time(
+  huron_sim <- foreach(j=1:J) %dopar% {
+    Y_j <- arima.sim(list(ar=ar),n=length(huron_depth),sd=sigma)+intercept
+    try(coef(arima(Y_j,order=c(2,0,1))))
+  }
+)
+```
+
+Some of these arima calls did not successfully produce parameter estimates. The try function lets the simulation proceed despite these errors and we can check how many of them fails,
+
+```{r}
+sum(sapply(huron_sim, function(x) inherits(x,"try-error")))
+```
+
+For the remaining ones, we can look at the resulting estimates of the MA1 component.
+
+```{r}
+ma1 <- unlist(lapply(huron_sim,function(x) if(!inherits(x,"try-error"))x["ma1"] else NULL ))
+hist(ma1,breaks=50)
+```
+
+When the true model is AR1 and we fit ARMA(2,1), it seems that we often obtain a model with estimated MA1 coefficient on the boundary of invertibility. It is clear from the simulation that we cannot reject an AR1 hypothesis, even though the Fisher information based analysis appears to give strong evidence that the data should be modeled with a nonzero MA1 coefficient. It may be sensible to <font color='royalblue'>avoid fitted models too close to the boundary of invertibility</font>. This is a reason not to blindly accept whatever model AIC might suggest.
+
+In addition, when we fit ARMA$(2,1)$ but the truth is ARMA$(1,0)$ or close to it, we will likely get cancelling roots (or close to it). Numerical problems could arise for models very close to reducibility (cancelling AR and MA roots). No optimization procedure is reliable for maximizing awkward, non-convex functions.
+
+Imperfect maximization can be found in previous AIC table:
+```{r}
+kable(huron_aic_table,digits=2)
+```
+
+**How is the table inconsistent with perfect maximization?**
+
+For example, compare ARMA$(2,2)$ and ARMA$(3,2)$. Adding one parameter increases AIC "2D" part by 2, but adding a parameter cannot increase negative log likelihood (recall that for nested hypotheses $H^{\langle 0\rangle}\subset H^{\langle 1\rangle}$, the likelihood maximized over $H^{\langle 1\rangle}$ cannot be less than the likelihood maximized over $H^{\langle 0\rangle}$).
+
+
+
+
+
