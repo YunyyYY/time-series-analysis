@@ -1,6 +1,11 @@
 ---
 title: "Chapter 2. Time series models, trend and autocovariance"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+  html_notebook:
+    toc: yes
 ---
 
 ### Trend

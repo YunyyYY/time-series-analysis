@@ -1,8 +1,8 @@
 ---
 title: "Chapter 3. Stationarity, white noise, and some basic time series models"
 output:
-  html_document:
-    df_print: paged
+  html_document: 
+    toc: yes
 ---
 
 ### Weak stationarity and strict stationarity

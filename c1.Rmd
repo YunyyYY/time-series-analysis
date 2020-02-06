@@ -1,10 +1,11 @@
 ---
 title: "Chapter 1. Introduction"
 output:
-  html_notebook:
+  html_document: 
+    toc: yes
+  html_notebook: 
     theme: cerulean
-  html_document:
-    df_print: paged
+    toc: yes
 ---
 
 ### Course organization
