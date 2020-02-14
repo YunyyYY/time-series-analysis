@@ -1,0 +1,107 @@
+---
+title: 'Chapter 6. Extending the ARMA model: Seasonality and trend'
+output:
+  html_document: 
+    toc: yes
+---
+
+\newcommand\P{\mathbb{P}}
+\newcommand\E{\mathbb{E}}
+\newcommand\var{\operatorname{Var}}
+\newcommand\cov{\operatorname{Cov}}
+\newcommand\AR{\Phi}
+\newcommand\MA{\Psi}
+\newcommand\ar{\phi}
+\newcommand\ma{\psi}
+
+---
+
+### Seasonal autoregressive moving average (SARMA) models
+
+A general SARMA$(p,q)\times(P,Q)_{12}$ model for monthly data is \[
+\ar(B)\AR(B^{12}) (Y_n-\mu) = \ma(B)\MA(B^{12}) \epsilon_n
+\] where $\{\epsilon_n\}$ is a white noise process and
+\begin{eqnarray*}
+\mu &=& \E[Y_n]
+\\
+\ar(x)&=&1-\ar_1 x-\dots -\ar_px^p,
+\\ 
+\ma(x)&=&1+\ma_1 x+\dots +\ma_qx^q, 
+\\
+\AR(x)&=&1-\AR_1 x-\dots -\AR_Px^P,
+\\ 
+\MA(x)&=&1+\MA_1 x+\dots +\MA_Qx^Q.
+\end{eqnarray*}
+
+Why do we assume a multiplicative structure？It adds simplicity and makes it easier to find roots. This is not necessarily related to being a good model for data.
+
+SARMA model is a special case of an ARMA model, where the AR and MA polynomials are factored into a **monthly** polynomial in $B$ and an **annual** polynomial in $B^{12}$. For the SARMA$(p,q)\times(P,Q)_{d}$ model, $d$ is called the period.
+
+```{r}
+dat <- read.table(file="data/huron_depth.csv",sep=",",header=TRUE)
+dat$year <- strtoi(substr(dat$Date, 7,10))
+dat$month <- strtoi(substr(dat$Date, 1,2), base=10L)
+head(dat,3)
+```
+
+```{r}
+huron_depth <- dat$Average
+time <- dat$year + dat$month/12
+# Note: we treat December 2011 as time 2012.0, etc 
+plot(huron_depth~time,type="l")
+```
+
+Based on our previous analysis, we'll go with AR(1) for the annual polynomial. Let's try ARMA(1,1) for the monthly part.Thus, we seek to fit the model
+\[ (1-\AR_1 B^{12})(1-\ar_1 B) Y_n = (1+\ma_1 B)\epsilon_n.\]
+
+```{r}
+huron_sarma11x10 <- arima(huron_depth, 
+                          order=c(1,0,1), 
+                          seasonal=list(order=c(1,0,0),period=12)
+                          )
+huron_sarma11x10
+```
+
+The residual analysis is similar to non-seasonal ARMA models. We look for residual correlations at lags corresonding to multiples of the period (in this specific cases, 12, 24, 36, ...) for **misspecified annual dependence**.
+
+```{r}
+acf(huron_sarma11x10$residuals)
+```
+
+According to the acf plot, perhaps we should try an extra seasonal term (looking at values of 12, 24, 36 with negative, positive and negative correlation respectively), e.g., (P,Q) = (1,1) instead of (1,0). The oscillatory component for within-year variation might suggest $p=2$ since $p=1$ can only give exponentially decaying acf.
+
+### ARMA models for differenced data
+
+Applying a difference operation to the data can make it look more stationary and therefore more appropriate for ARMA modeling. This can be viewed as a **transformation to stationarity**.
+
+We can transform the data ${y_{1:N}}$ to ${z_{2:N}}$ 
+$$ {z_n} = \Delta {y_n} = {y_n}-{y_{n-1}} = (1-B)y_n.$$
+
+An ARMA$(p,q)$ model $Z_{2:N}$ for the differenced data ${z_{2:N}}$ is called an **integrated autoregressive moving average** model for ${y_{1:N}}$ and is written as ARIMA$(p,1,q)$. Formally, the ARIMA$(p,d,q)$ model with intercept $\mu$ for $Y_{1:N}$ is \[\ar(B)\big( (1-B)^d Y_n-\mu \big) = \ma(B) \epsilon_n\]
+However, <font color='orangered'>it is unusual to fit an ARIMA model with d > 1.</font>
+
+### The SARIMA$(p, d, q) \times (P, D, Q)$ model
+
+A general SARIMA$(p, d, q) \times (P, D, Q)$ model is defined as \[
+\ar(B)\AR(B^{12}) ( (1-B)^d(1-B^{12})^D Y_n-\mu ) = \ma(B)\MA(B^{12}) \epsilon_n. \]
+
+For example, the SARIMA$(0, 1, 1) \times (0, 1, 1)_{12}$ model has often been used for forecasting monthly time series in economics and business. It is sometimes called the **airline model**.
+
+### Modeling trend with ARMA noise
+
+A general signal plus noise model is \[Y_n = \mu_n + \eta_n,\] where $\eta_n\}$ is a stationary, mean zero **stochastic process**, and $\mu_n$ is the mean function. If $\eta_n\}$ is uncorrelated, it is a **signal plus white noise model**. Otherwise it can be referred to as a **signal plus colored noise model**. Signal and trend are used interchangeably.
+
+When the mean function (also known as the trend) has a linear specification, the signal plus ARMA noise model is known as **linear regression with ARMA errors**.
+
+### Setting up a formal hypothesis test
+
+To talk formally about these results, we must write down a model and some hypotheses. Writing the data as $y_{1:N}$ , collected at years $t_{1:N}$ , the model we have fitted is \[\left(1-\phi_{1} B\right)\left(Y_{n}-\mu-\beta t_{n}\right)=\epsilon_{n}\]
+where $\{\epsilon_n\}$ is Gaussian white noise with variance $\sigma^2$. The null model
+is \[H^{\langle 0\rangle}: \beta=0\]  and the alternative hypothesis \[H^{\langle 0\rangle}: \beta\neq 0.\]
+
+Available tests: Z tests on the coefficients, likelihood ratio tests.
+
+Supplementary analysis: plot residuals. simulation study, bootstrap.
+
+
+
