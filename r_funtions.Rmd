@@ -1,0 +1,22 @@
+---
+title: "R functions"
+output: html_document
+---
+
+### `ts()`
+ 
+`ts` class tells R the units of time. It also helps R choose other plotting options in a way appriate for time series. 
+
+```{r, include=FALSE}
+U1 <- read.table(file="data/unadjusted_unemployment.csv", sep=",",header=TRUE)
+u1 <- t(as.matrix(U1[2:13]))  # t() get transpose of matrix.
+dim(u1) <- NULL  # dim() retrieve or set the dimension of an object. Convert marix u1 to an 1D array
+date <- seq(from=1948,length=length(u1),by=1/12)  # generate sequence, `by` is increment.
+```
+
+```{r}
+u1_ts <- ts(u1,start=1948,frequency=12)
+plot(u1_ts)
+```
+
+For a report, we should add units to plots. Extra details (like bandwith in the periodogram plot) should be explained or removed.

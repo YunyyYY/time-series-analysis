@@ -244,10 +244,14 @@ plot(density(theta[,"ma1"],bw=0.05))
 range(theta[,"ma1"])
 ```
 
+```{r, include=FALSE}
+library(doParallel)
+```
+
+
 We can use foreach to carry out a parallel for loop where jobs are sent to different processors.
 
 ```{r}
-library(doParallel)
 registerDoParallel()
 J <- 1000
 huron_ar1 <- arima(huron_depth,order=c(1,0,0))

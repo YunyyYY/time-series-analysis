@@ -1,0 +1,181 @@
+---
+title: "Chapter 8. Smoothing in the time and frequency domains"
+output: 
+  html_document:
+      toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### A motivated example
+
+Estimating a nonparametric trend from a time series is known as **smoothing**.
+
+```{r}
+# system() invokes the OS command specified by command.
+# head displays first line of file.
+system("head data/unadjusted_unemployment.csv",intern=TRUE)
+```
+
+```{r}
+U1 <- read.table(file="data/unadjusted_unemployment.csv", sep=",",header=TRUE)
+head(U1,3)
+```
+
+We first need to extract the data from the table:
+
+```{r}
+u1 <- t(as.matrix(U1[2:13]))  # t() get transpose of matrix.
+dim(u1) <- NULL  # dim() retrieve or set the dimension of an object. Convert marix u1 to an 1D array
+date <- seq(from=1948,length=length(u1),by=1/12)  # generate sequence, `by` is increment.
+plot(date,u1,type="l",ylab="Percent unemployment (unadjusted)")
+```
+
+We can look at monthly seasonally adjusted unemployment:
+
+```{r}
+U2 <- read.table(file="data/adjusted_unemployment.csv",sep=",",header=TRUE)
+u2 <- t(as.matrix(U2[2:13]))
+dim(u2) <- NULL
+plot(date,u1,type="l",ylab="percent",col="black")
+lines(date,u2,type="l",col="red")
+title("Unemployment. Raw (black) and seasonally adjusted (red)")
+```
+
+To help understand the seasonal adjustment, we can look at what it does to the smoothed periodogram.
+
+```{r}
+u1_ts <- ts(u1,start=1948,frequency=12)
+u2_ts <- ts(u2,start=1948,frequency=12)
+# ts.union() bind time series which have a common frequency
+spectrum(ts.union(u1_ts,u2_ts),spans=c(3,5,3),main="Unemployment. Raw (black) and seasonally adjusted (red)")
+```
+
+- x axis units: cycles per year. (Determined by the range of x. If the unit is cycles per month, the x axis can only go up to $1/2$ not $6$).
+- U.S. Bureau of Labor Statistics (BLS) seasonal adjustment removes the **effects of recurring seasonal influences** from economic series.It removes most of the signal at seasonal frequencies and little elsewhere.
+
+
+### Transfer function / frequecy response
+
+The **ratio of the periodograms of the smoothed and unsmoothed time series** is called the **transfer function or frequency response function of the smoother**.
+
+We can infer the frequency response of the smoother to deseasonalize the data.
+
+```{r}
+s <- spectrum(ts.union(u1_ts,u2_ts),plot=FALSE)
+names(s)
+```
+
+```{r}
+plot(s$freq,s$spec[,2]/s$spec[,1],type="l",log="y",
+  ylab="spectrum ratio", xlab="frequency",
+  main="frequency response (dashed lines at 0.9 and 1.1)")
+abline(h=c(0.9,1.1),lty="dashed",col="red")
+```
+
+From this frequency response plot, we can see that the seasonal adjustment removes 3 orders of magnitude from the power of the signal at seasonal frequencies, and some of the power from neighboring frequencies. 
+
+### Loess smoothing
+
+Loess is a **Local linear regression** approach. At each point in time, Loess <font color='orangered'>makes a linear regression (e.g., fit a constant, linear or quadratic polynomial) using only points close in time</font>.
+
+It is implemented in R by `loess`, with `span` setting the fraction of points included in the moving window.
+
+```{r}
+u1_loess <- loess(u1~date,span=0.5)
+plot(date,u1,type="l")
+lines(u1_loess$x,u1_loess$fitted,type="l",col="red",tck=2)
+```
+
+In the plot, at any point $t$, loess looks at $50\%$ of points closest to $t$ and evaluate a locally weighted linear regression at the point.
+
+Compute the frequency response for this smoothing,
+```{r}
+s2 <- spectrum(ts.union(u1_ts,ts(u1_loess$fitted,start=1948,frequency=12)),plot=FALSE)
+plot(s2$freq,s2$spec[,2]/s2$spec[,1],type="l",log="y",
+  ylab="spectrum ratio", xlab="frequency", xlim=c(0,1.5),
+  main="frequency response (dashed line at 1.0)")
+abline(h=1,lty="dashed",col="red")
+```
+
+**Analyzing the frequency domain behavior**: this is a low-pass filter. Power at frequencies higher than 0.1 cycles per year are reduced by 3 orders of magnitude.
+
+For the unemployment data, high frequency variation might be considered “noise” and low frequency variation might be considered trend. A band of mid-range frequencies might be considered to correspond to the business cycle.
+
+### A band pass filter: extract business cycles
+
+Build a smoothing operation in the time domain to extract business cycles, and then look at its frequency response function:
+
+```{r}
+u_low <- ts(loess(u1~date,span=0.5)$fitted,
+  start=1948,frequency=12)
+u_hi <- ts(u1 - loess(u1~date,span=0.1)$fitted,
+  start=1948,frequency=12)
+u_cycles <- u1 - u_hi - u_low
+plot(ts.union(u1, u_low,u_hi,u_cycles),
+  main="Decomposition of unemployment as trend + noise + cycles")
+```
+
+The frequency response is
+```{r}
+s3 <- spectrum(ts.union(u1_ts,u_cycles),spans=c(3,3),plot=FALSE)
+# span --- vector of odd integers giving the widths of modified Daniell smoothers to be used to smooth the periodogram.
+plot(s3$freq,s3$spec[,2]/s3$spec[,1],type="l",log="y",
+  ylab="spectrum ratio", xlab="frequency (cycles per year)", xlim=c(0,1.2), ylim=c(5e-6,1.1),
+  main="frequency response, showing region for ratio > 0.5")
+abline(h=1,lty="dashed",col="red")
+freq_cycles <- range(s3$freq[s3$spec[,2]/s3$spec[,1]>0.5]) 
+abline(v=freq_cycles,lty="dashed",col="blue") 
+abline(h=0.5,lty="dashed",col="blue")
+```
+
+The horizontal blue line corresponds to power ratio of $.5$. The two verticle lines corresponds to \[
+\frac{1}{0.069} \approx 15, \qquad \frac{1}{0.194} \approx 5
+\]
+which means we <font color='royalblue'>keep at least half the power for cycles between 5 and 15 year period</font>.
+
+**Comment**: from the business cycles, we infer that recessions happen roughly every 10 years. Some economists argue 3-5 year cycles are also important, but we have filtered them out.
+
+We plot the lower frequencies of a smoothed periodogram for the raw unemployment data to zoom in on frequencies around the business cycle frequency:
+
+```{r}
+s1 <- spectrum(u1_ts,spans=c(3),plot=FALSE)
+par(mai=c(1,0.8,0.1,0.1))
+plot(s1,xlim=c(0,0.7),ylim=c(1e-2,max(s1$spec)),main="")
+```
+
+The spectrum looks steadily decreasing without clear local peaks that could be resonant frequencies of the economy. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
