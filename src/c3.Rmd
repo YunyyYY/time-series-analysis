@@ -98,7 +98,7 @@ The order $p$ autoregressive model, abbreviated to AR($p$), is
 \]
 If $\{\epsilon_n\}$ is a Gaussian white noise process, it is called the Gaussian AR(p) model.
 
-M1 is a **stochastic difference equation**. It is a difference equation (also known as a recurrence relation) since each time point is specified recursively in terms of previous time points.
+This is a **stochastic difference equation**. It is a difference equation (also known as a recurrence relation) since each time point is specified recursively in terms of previous time points.
 
 To complete the model, we need to **initialize** the solution to the stochastic difference equation. Supposing we want to specify a distribution for $Y_{1:N}$, we have some choices in how to set up the initial values:
 
@@ -133,7 +133,7 @@ for(n in 2:N) X[n] <- 0.6 * X[n-1] + rnorm(1)
 plot(X,type="l")
 ```
 
-This looks similar to the arima.sim simulation, except near the start. This is because `arima.sim` use innovations foor the burn-in period of the time series. Burn-in is a colloquial term that describes the practice of throwing away some iterations at the beginning of an MCMC run. `rnorm` is the default function used to generate the innovations.
+This looks similar to the arima.sim simulation, except near the start. This is because `arima.sim` use innovations for the burn-in period of the time series. Burn-in is a colloquial term that describes the practice of throwing away some iterations at the beginning of an MCMC run. `rnorm` is the default function used to generate the innovations.
 
 **Question**: compute the autcovariance function for model M2.
 \[
@@ -239,19 +239,16 @@ par(mai=c(0.8,0.5,0.1,0.1))
 
 It seems reasonable so far. Next, plot the autocorrelation function of `diff(log(sp500))`:
 
-```{r}
-acf(diff(log(sp500)))
-```
-
 <span style='color:#126bae'>It is bad style to refer to quantities using computer code notation. We should set up mathematical notation in the text. In a MIDTERM project, it is better to code as follow:</span>
 
-Let $z_n = \log y_n - \log y_{n-1}$. The temporal di↵erence of the log of the value of an investment is called the return on the investment. Plot $z_{2:N}$, 
+Let $z_n = \log y_n - \log y_{n-1}$. The temporal difference of the log of the value of an investment is called the return on the investment. Plot $z_{2:N}$, 
 ```{r}
+# acf(diff(log(sp500)))  $ DON'T do this
 z <- diff(log(sp500))
 acf(z)
 ```
 
-The length of the time series be relevant when considering **practical versus statistical significance**. For small datasets, small effects of no practical significance will also usually be statically insiginificant.
+The length of the time series is relevant when considering **practical versus statistical significance**. For small datasets, small effects of no practical significance will also usually be statically insiginificant.
 
 It seems the S&P 500 returns (centered, by subtracting the sample mean) may be a real-life time series well modeled by white noise. However, things become less clear when we look at the **absolute value of the centered returns**:
 

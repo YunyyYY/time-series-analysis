@@ -20,7 +20,7 @@ output:
 
 Univariate time series model is a vector-valued random variable $Y_{1:N}$ which we suppose has a covariance matrix $V$ which is an $N \times N$ matrix with entries $V_{mn} = \cov(Y_m, Y_n)$. 
 
-$V$ is a non-negative definite symmetric matrix, and therefore has $N$ non-negative eigenvalues $\lambda_1,\dots,\lambda_N$ with corresponding eigenvectors $\ev_1,\dots,\ev_N$ such that
+$V$ is a non-negative definite symmetric matrix, and therefore has $N$ non-negative eigenvalues $\lambda_1,\dots,\lambda_N$ with corresponding eigenvectors $u_1,\dots,u_N$ such that
 $$ V u_n = \lambda_n u_n.$$
 These eigenvectors are **orthogonal**: \[u_{m}^{\mathrm{T}} u_{n}=0 \text { if } m \neq n\]
 

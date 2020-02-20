@@ -54,7 +54,7 @@ Y_n &= \frac{1+\psi B}{1-\phi B}\epsilon_n \\
 \]
 By the Taylor expasion of $g(x)$, we get the MA$(\infty)$ representation. 
 
-We say that the ARMA model is **causal** if its MA$(\infty)$ representation is a convergent series.
+<font color='orangered'>We say that the ARMA model is **causal** if its MA$(\infty)$ representation is a convergent series</font>.
 
 #### Causality and invertibility
 
@@ -76,19 +76,19 @@ Check its position w.r.t the unit circle by their absolute values,
 abs(roots)
 ```
 
-It's undesirable to use a *non-invertible* model for data analysis. <font color='#ed5a65'>Non-invertible models* give numerically unstable estimates of residuals</font>.
+It's undesirable to use a *non-invertible* model for data analysis. <font color='#ed5a65'>Non-invertible models give **numerically unstable estimates of residuals**</font>.
 
 ### Reducible and irreducible ARMA models
 
-The ARMA model can be viewed as a ration of two polynomials, \[Y_n = \frac{\phi(B)}{\psi(B)}\epsilon_n.\] If the two polynomials share a common factor, it can be canceled out without changing the model.
+The ARMA model can be viewed as a ratio of two polynomials, \[Y_n = \frac{\psi(B)}{\phi(B)}\epsilon_n.\] If the two polynomials share a common factor, it can be canceled out without changing the model.
 
-By the **fundamental theorem of algebra**, the polynomial of degree $p$ can be written as \[(1-\frac{x}{\lambda_1}) \times (1-\frac{x}{\lambda_2}) \times \dots \times (1-\frac{x}{\lambda_p}),\] where $\lambda_{1:p}$ are $p$ rootes of the polynomial. The Taylor series expansion of $\phi(B)^{-1}$ is convergent if and only if for all $i\in 1:p$, $(1-B\lambda_i)^{-1}$ has a conveergent expansion. This happens if $|\lambda_i|>1$ for all $i$.
+By the **fundamental theorem of algebra**, the polynomial of degree $p$ can be written as \[(1-\frac{x}{\lambda_1}) \times (1-\frac{x}{\lambda_2}) \times \dots \times (1-\frac{x}{\lambda_p}),\] where $\lambda_{1:p}$ are $p$ rootes of the polynomial. <font color='royalblue'>The Taylor series expansion of $\phi(B)^{-1}$ is convergent if and only if for all $i\in 1:p$, $(1-B\lambda_i)^{-1}$ has a **convergent expansion**. This happens if $|\lambda_i|>1$ for all $i$</font>.
 
 ### Deterministic skeletons
 
 The **deterministic skeleton** of a time series model is the non-random process obtained by removing randomness from a stochastic model. For a discrete-time model, we can define a continuous-time deterministic skeleton by **replacing the discrete-time diserence equation with a differential equation**. Rather than deriving a deterministic skeleton from a stochastic time series model, we can work in *reverse*: <font color='royalblue'>we add stochasticity to a deterministic model to get a model that can explain non-deterministic phenomena</font>.
 
-For example, a differential equation given by \[\frac{d^2}{dt^2} x(t) = -\omega^2 x(t).\] Its a discrete version is a deterministic linear diserence equation, replacing $d^2/dt^2$ by the second difference operator, $\Delta^2 = (1-B)^2$. This leads to \[\Delta^2 y_n = - \omega^2 y_n.\] Adding white nosie and expand $\Delta^2 = (1-B)^2$, we get a stochastic model \[Y_n = \frac{2}{1+\omega^2}Y_{n-1} - \frac{1}{1+\omega^2}Y_{n-2}  + \epsilon_n.\] It is reasonable to regard it as a good candidate to describe systems that have *semi-regular but somewhat erratic fluctuations*, called **quasi-periodic** behavior. Such behavior is evident in business cycles or wild animal populations.
+For example, a differential equation given by \[\frac{d^2}{dt^2} x(t) = -\omega^2 x(t).\] Its discrete version is a deterministic linear diserence equation, replacing $d^2/dt^2$ by the second difference operator, $\Delta^2 = (1-B)^2$. This leads to \[\Delta^2 y_n = - \omega^2 y_n.\] Adding white nosie and expand $\Delta^2 = (1-B)^2$, we get a stochastic model \[Y_n = \frac{2}{1+\omega^2}Y_{n-1} - \frac{1}{1+\omega^2}Y_{n-2}  + \epsilon_n.\] It is reasonable to regard it as a good candidate to describe systems that have *semi-regular but somewhat erratic fluctuations*, called **quasi-periodic** behavior. Such behavior is evident in business cycles or wild animal populations.
 
 **Example**
 
@@ -99,8 +99,8 @@ ar_coefs <- c(2/(1+omega^2), - 1/(1+omega^2))
 X <- arima.sim(list(ar=ar_coefs),n=500,sd=1)
 par(mfrow=c(1,2))
 plot(X)
-plot(ARMAacf(ar=ar_coefs,lag.max=500),type="l",ylab="ACF of X")
 # ARMAacf compute theoretical ACF for an ARMA process
+plot(ARMAacf(ar=ar_coefs,lag.max=500),type="l",ylab="ACF of X")
 ```
 
 Quasi-periodic fluctuations are said to be **phase locked** as long as

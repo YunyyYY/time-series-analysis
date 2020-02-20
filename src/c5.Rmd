@@ -17,7 +17,7 @@ It is often convenient to work with its logarithm, which is order-preserving,
 
 \[\hat\theta(y_{1:N}) = \arg\max_\theta f_{Y_{1:N}}(y_{1:N};\theta)\]
 
-Quantify statistical unceortainty in an MLE:
+Quantify statistical uncertainty in an MLE:
 
 1. Fisher information.
 2. Profile likelihood estimation. 
@@ -210,6 +210,7 @@ profile_loglik <- rep(NA,K)
 for(k in 1:K){
   profile_loglik[k] <- logLik(arima(huron_depth,order=c(2,0,1),
                                     fixed=c(NA,NA,ma1[k],NA)))
+  # `logLik()` extraxt log-likelihood
   # Parameters with `NA` entries in `fixed` are estimated.
 }
 plot(profile_loglik~ma1,ty="l")
@@ -235,7 +236,7 @@ for(j in 1:J){
     )+intercept
   theta[j,] <- coef(arima(Y_j,order=c(2,0,1)))
 }
-plot(density(theta[,"ma1"],bw=0.05))
+plot(density(theta[,"ma1"],bw=0.05))  # theeta is 1000 x 4, "ma1" is a column, compute its density (of distribution)
 ```
 
 <font color='green'>`arima` transforms the model to invertibility</font>. Thus, the estimated value of $\theta_1$ can only fall in the interval $[-1, 1]$.

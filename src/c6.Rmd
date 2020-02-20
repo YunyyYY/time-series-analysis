@@ -89,7 +89,7 @@ For example, the SARIMA$(0, 1, 1) \times (0, 1, 1)_{12}$ model has often been us
 
 ### Modeling trend with ARMA noise
 
-A general signal plus noise model is \[Y_n = \mu_n + \eta_n,\] where $\eta_n\}$ is a stationary, mean zero **stochastic process**, and $\mu_n$ is the mean function. If $\eta_n\}$ is uncorrelated, it is a **signal plus white noise model**. Otherwise it can be referred to as a **signal plus colored noise model**. Signal and trend are used interchangeably.
+A general signal plus noise model is \[Y_n = \mu_n + \eta_n,\] where $\{\eta_n\}$ is a stationary, mean zero **stochastic process**, and $\mu_n$ is the mean function. If $\{\eta_n\}$ is uncorrelated, it is a **signal plus white noise model**. Otherwise it can be referred to as a **signal plus colored noise model**. Signal and trend are used interchangeably.
 
 When the mean function (also known as the trend) has a linear specification, the signal plus ARMA noise model is known as **linear regression with ARMA errors**.
 
