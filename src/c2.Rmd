@@ -13,7 +13,7 @@ Define the mean function (or trend) for $n \in 1: N$ by
 \[
 \mu_{n}=\mathbb{E}\left[Y_{n}\right]=\int_{-\infty}^{\infty} y_{n} f_{Y_{n}}\left(y_{n}\right) d y_{n}
 \]
-We only make observations at the discrete collection of times $t_1:N$ and so we require $\mu(t_n) = \mu_n$.
+We only make observations at the discrete collection of times $t_{1:N}$ and so we require $\mu(t_n) = \mu_n$.
 
 If the mean is constant, that is, $\mu_n = \mu$, the model is called **mean stationary**. We can estimate mean use the mean estimator, $\hat{\mu} = \hat{\mu}\left(y_{1: N}\right)=\frac{1}{N} \sum_{k=1}^{N} y_{k}$. It is only a reasonable estimator of the mean function when a mean stationary model is appropriate.
 
@@ -98,7 +98,7 @@ However, the sample ACF confirms what we can probably see from the plot of the f
 
 ### Generalized least squares
 
-If we know the covariance matrix, $\Gamma4, for a model with dependent errors, 
+If we know the covariance matrix, $\Gamma$, for a model with dependent errors, 
 \[
 Y=Z \beta+\zeta, \quad \zeta \sim N[0, \Gamma]
 \]
@@ -115,6 +115,6 @@ and the variance of $\beta$ is
 
 The OLS estimator remains unbiased for this model, but it's often a practical solution to use the OLS estimator, expecially for preliminary data analysis.  We  can’t necessarily make a good estimator based on the GLS model *unless* we know $\Gamma$.
 
-It is okay to do ordinary linear regression for data which are not well modeled with uncorrelated errors. However, if we do so, we should not trust the **error estimates** coming from L1.
+It is okay to do ordinary linear regression for data which are not well modeled with uncorrelated errors. However, if we do so, we should not trust the **error estimates** coming from $Y=Z\beta+\epsilon$ (where $\epsilon$ is treated as a white noise).
 
 

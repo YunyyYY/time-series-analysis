@@ -1,7 +1,12 @@
 ---
 title: "R functions"
-output: html_document
+output: 
+  html_document:
+    toc: yes
 ---
+
+### `I()`
+Inhibit Interpretation/Conversion of Objects. Change the class of an object to indicate that it should be treated "as is". e.g., `I(x^2)` would return a vector of values raised to the second power.
 
 ### `ts()`
  

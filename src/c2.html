@@ -1651,7 +1651,7 @@ summary {
 <h3>Trend</h3>
 <p>Define the mean function (or trend) for <span class="math inline">\(n \in 1: N\)</span> by <span class="math display">\[
 \mu_{n}=\mathbb{E}\left[Y_{n}\right]=\int_{-\infty}^{\infty} y_{n} f_{Y_{n}}\left(y_{n}\right) d y_{n}
-\]</span> We only make observations at the discrete collection of times <span class="math inline">\(t_1:N\)</span> and so we require <span class="math inline">\(\mu(t_n) = \mu_n\)</span>.</p>
+\]</span> We only make observations at the discrete collection of times <span class="math inline">\(t_{1:N}\)</span> and so we require <span class="math inline">\(\mu(t_n) = \mu_n\)</span>.</p>
 <p>If the mean is constant, that is, <span class="math inline">\(\mu_n = \mu\)</span>, the model is called <strong>mean stationary</strong>. We can estimate mean use the mean estimator, <span class="math inline">\(\hat{\mu} = \hat{\mu}\left(y_{1: N}\right)=\frac{1}{N} \sum_{k=1}^{N} y_{k}\)</span>. It is only a reasonable estimator of the mean function when a mean stationary model is appropriate.</p>
 <p>Trend is a property of the <em>model</em>, and the estimated trend is a function of the <em>data</em>.</p>
 </div>
@@ -1732,7 +1732,7 @@ lines(x=yr,y=prediction,col=&quot;red&quot;)</code></pre>
 </div>
 <div id="generalized-least-squares" class="section level3">
 <h3>Generalized least squares</h3>
-<p>If we know the covariance matrix, $4, for a model with dependent errors, <span class="math display">\[
+<p>If we know the covariance matrix, <span class="math inline">\(\Gamma\)</span>, for a model with dependent errors, <span class="math display">\[
 Y=Z \beta+\zeta, \quad \zeta \sim N[0, \Gamma]
 \]</span> <span class="math inline">\(\zeta\)</span> follows a multivariate normal distribution with mean zero and covariance matrix <span class="math inline">\(\Gamma\)</span>.</p>
 <p>The minimum variance unbiased estimator of <span class="math inline">\(\beta\)</span> for this model is <span class="math display">\[
@@ -1741,7 +1741,7 @@ Y=Z \beta+\zeta, \quad \zeta \sim N[0, \Gamma]
 \operatorname{Var}\left[\hat{\beta}_{O L S}\left(Y_{1: N}\right)\right]=\left(Z^{\mathrm{T}} Z\right)^{-1} Z^{\mathrm{T}} \Gamma Z\left(Z^{\mathrm{T}} Z\right)^{-1}
 \]</span></p>
 <p>The OLS estimator remains unbiased for this model, but it’s often a practical solution to use the OLS estimator, expecially for preliminary data analysis. We can’t necessarily make a good estimator based on the GLS model <em>unless</em> we know <span class="math inline">\(\Gamma\)</span>.</p>
-<p>It is okay to do ordinary linear regression for data which are not well modeled with uncorrelated errors. However, if we do so, we should not trust the <strong>error estimates</strong> coming from L1.</p>
+<p>It is okay to do ordinary linear regression for data which are not well modeled with uncorrelated errors. However, if we do so, we should not trust the <strong>error estimates</strong> coming from <span class="math inline">\(Y=Z\beta+\epsilon\)</span> (where <span class="math inline">\(\epsilon\)</span> is treated as a white noise).</p>
 </div>
 
 

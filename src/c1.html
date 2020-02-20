@@ -402,7 +402,7 @@ str(y)</code></pre>
 ##  $ Hi_Snow  : num  1.1 3.2 2.5 3.2 2.1 2.5 2 5 1.3 7 ...</code></pre>
 <p><code>str</code> summarizes the structure of the data. We write the <span class="math inline">\(N\)</span> data points as <span class="math inline">\(y_{1: N}\)</span>. Basic estimates of the mean and standard deviation are <span class="math display">\[
 \hat{\mu}_{1}=\frac{1}{N} \sum_{n=1}^{N} y_{n}, \quad \hat{\sigma}_{1}=\sqrt{\frac{1}{N-1} \sum_{n=1}^{N}\left(y_{n}-\hat{\mu}_{1}\right)^{2}}
-\]</span> This suggests an approximate confidence interval for <span class="math inline">\(\mu\)</span> is <span class="math inline">\(\hat{\mu}_{1} \pm t_{N, \alpha/2} \hat{\sigma}_{1} / \sqrt{N}\)</span>. we compute<span class="math inline">\(\hat{\mu_1}\)</span> and <span class="math inline">\(\mathrm{SE}_1 = \hat{\sigma_1}/\sqrt{N}\)</span> as</p>
+\]</span> This suggests an approximate confidence interval for <span class="math inline">\(\mu\)</span> is <span class="math inline">\(\hat{\mu}_{1} \pm t_{N, \alpha/2} \hat{\sigma}_{1} / \sqrt{N}\)</span>. we compute <span class="math inline">\(\hat{\mu_1}\)</span> and <span class="math inline">\(\mathrm{SE}_1 = \hat{\sigma_1}/\sqrt{N}\)</span> as</p>
 <pre class="r"><code>mu1 &lt;- mean(y$Low,na.rm=TRUE)
 se1 &lt;- sd(y$Low,na.rm=TRUE)/sqrt(sum(!is.na(y$Low)))
 cat(&quot;mu1 =&quot;, mu1, &quot;, se1 =&quot;, se1, &quot;\n&quot;)</code></pre>

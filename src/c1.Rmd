@@ -25,7 +25,7 @@ str(y)
 \hat{\mu}_{1}=\frac{1}{N} \sum_{n=1}^{N} y_{n}, \quad \hat{\sigma}_{1}=\sqrt{\frac{1}{N-1} \sum_{n=1}^{N}\left(y_{n}-\hat{\mu}_{1}\right)^{2}}
 \]
 This suggests an approximate confidence interval for $\mu$ is $\hat{\mu}_{1} \pm t_{N, \alpha/2} \hat{\sigma}_{1} / \sqrt{N}$.
-we compute$\hat{\mu_1}$ and $\mathrm{SE}_1 = \hat{\sigma_1}/\sqrt{N}$ as
+we compute $\hat{\mu_1}$ and $\mathrm{SE}_1 = \hat{\sigma_1}/\sqrt{N}$ as
 ```{r}
 mu1 <- mean(y$Low,na.rm=TRUE)
 se1 <- sd(y$Low,na.rm=TRUE)/sqrt(sum(!is.na(y$Low)))
