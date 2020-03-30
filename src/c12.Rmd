@@ -1,0 +1,418 @@
+---
+title: "Chapter 12. Practical likelihood-based inference for POMP models"
+output: 
+  html_document:
+      toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+set.seed(594709947L)
+library(pomp)
+library(ggplot2)
+library(gridExtra)
+library(plyr)
+library(reshape2)
+library(foreach)
+theme_set(theme_bw())
+
+library(doParallel)
+library(doRNG)
+```
+
+It is important for us to bear in mind that the likelihood function exists even when we don’t know what it is. We can still talk about the likelihood function, and develop numerical methods that take advantage of its statistical properties.
+
+### The particle filter
+
+particle filter algorithm, also known as sequential Monte Carlo (SMC).
+
+1. Suppose at time $n − 1$, we obtained a set of $J$ points $X_{n−1,j}, j = 1,...,J$ drawn from the filtering distribution.
+2. We obtain sample points $X_{n,j}^P$ at time $n$ from the prediction distribution by simply simulating the process model: \[
+X_{n, j}^{P} \sim \operatorname{process}\left(X_{n-1, j}^{F}, \theta\right), \quad j=1, \ldots, J
+\]
+3. With $x_{n.j}^P$, obtain a sample of points from the filtering distribution at time tn by resampling from $\{X_{n,j}^P, j\in 1:J\}$ with weights $w_{n, j}=f_{Y_{n} | X_{n}}\left(y_{n}^{*} | X_{n, j}^{P} ; \theta\right)$.
+
+By Monte Carlo principle, the conditional likelihood \[
+\begin{aligned}
+\mathcal{L}_{n}(\theta) &=f_{Y_{n} | Y_{1: n-1}}\left(y_{n}^{*} | y_{1: n-1}^{*} ; \theta\right) \\
+&=\int f_{Y_{n} | X_{n}}\left(y_{n}^{*} | x_{n} ; \theta\right) f_{X_{n} | Y_{1: n-1}}\left(x_{n} | y_{1: n-1}^{*} ; \theta\right) d x_{n}
+\end{aligned}
+\]
+is approximated by \[
+\hat{\mathcal{L}}_{n}(\theta) \approx \frac{1}{N} \sum_{j} f_{Y_{n} | X_{n}}\left(y_{n}^{*} | X_{n, j}^{P} ; \theta\right)
+\]
+
+The full log likelihood then has approximation \[
+\begin{aligned}
+\ell(\theta) &=\log \mathcal{L}(\theta) \\
+&=\sum_{n} \log \mathcal{L}_{n}(\theta) \\
+& \approx \sum_{n} \log \hat{\mathcal{L}}_{n}(\theta)
+\end{aligned}
+\]
+
+### Sequential Monte Carlo in pomp
+
+```{r include=FALSE,cache=TRUE}
+sir_data <- read.table("https://raw.githubusercontent.com/ionides/531w20/master/11/bsflu_data.txt")
+
+sir_step <- Csnippet("
+  double dN_SI = rbinom(S,1-exp(-Beta*I/N*dt));
+  double dN_IR = rbinom(I,1-exp(-mu_IR*dt));
+  S -= dN_SI;
+  I += dN_SI - dN_IR;
+  R += dN_IR;
+  H += dN_IR;
+")
+sir_skel <- Csnippet("
+  double dN_SIdt = Beta*S*I/N;
+  double dN_IRdt = mu_IR*I;
+  DS = -dN_SIdt;
+  DI = dN_SIdt - dN_IRdt;
+  DR = dN_IRdt;
+  DH = dN_IRdt;
+")
+sir_rinit <- Csnippet("
+  S = nearbyint(N)-1;
+  I = 1;
+  R = 0;
+  H = 0;
+")
+sir_dmeas <- Csnippet("lik = dbinom(B,H,rho,give_log);")
+sir_rmeas <- Csnippet("B = rbinom(H,rho);")
+
+sir <- pomp(subset(sir_data,select=c(day,B)),
+  time="day",t0=0,
+  rprocess=euler(sir_step,delta.t=1/6),
+  rmeasure=sir_rmeas,
+  dmeasure=sir_dmeas,
+  rinit=sir_rinit,
+  skeleton = vectorfield(sir_skel),
+  paramnames=c("Beta","mu_IR","N","rho"),
+  statenames=c("S","I","R","H"),
+  accumvars="H",
+  partrans=parameter_trans(log=c("Beta","mu_IR","N"),logit="rho")
+) 
+```
+
+SIR model in Chapter 11: 
+```{r,fig.align='center',fig.height=4}
+sims <- simulate(sir,params=c(Beta=1.8,mu_IR=1,rho=0.9,N=2600),
+  nsim=20,format="data.frame",include=TRUE)
+ggplot(sims,mapping=aes(x=day,y=B,group=.id,color=.id=="data"))+
+  geom_line()+guides(color=FALSE)
+```
+
+In pomp, the basic particle filter is implemented in the command `pfilter`. We must **choose the number of particles to use** by setting the `Np` argument.
+
+```{r,warning=FALSE}
+pf <- pfilter(sir,Np=5000,params=c(Beta=2,mu_IR=1,rho=0.8,N=2600));
+logLik(pf)
+```
+
+Running a few particle filters gives an estimate of Monte Carlo variability:
+
+```{r,warning=FALSE}
+pf <- replicate(10,pfilter(sir,Np=5000,params=c(Beta=2,mu_IR=1,rho=0.8,N=2600)))
+print(ll <- sapply(pf,logLik))
+```
+
+A theoretical property of the particle filter is that it gives us an unbiased Monte Carlo estimate of the likelihood. This combined with Jensen’s inequality and the observation that $\log(x)$ is a concave function, ensures that the **average of the log likelihoods from many particle filter replications will have negative bias** as a Monte Carlo estimator of the log likelihood. The particle filter has bias decreases to zero as the number of particles increases. <font color='orangered'>It is a special property of the likelihood that the bias in this case is zero</font>.
+
+Compute standard error: 
+```{r}
+logmeanexp(ll,se=TRUE)
+```
+
+### The likelihood surface
+
+To get an idea of what the likelihood surface looks like in the neighborhood of the default parameter set supplied by SIR, we can construct a likelihood slice. A slice varies one parameter at a time, fixing the others.
+
+```{r}
+registerDoParallel()
+registerDoRNG(3899882)
+```
+
+`registerDoRNG` sets up a parallel random number generator. we can simply have a parallel for-loop via `foreach()`.
+
+```{r,cache=TRUE}
+p <- sliceDesign(
+  c(Beta=2,mu_IR=1,rho=0.8,N=2600), 
+  Beta=rep(seq(from=0.5,to=4,length=40),each=3),
+  mu_IR=rep(seq(from=0.5,to=2,length=40),each=3))
+foreach (theta=iter(p,"row"), .combine=rbind,.inorder=FALSE) %dopar% {
+  pfilter(sir,params=unlist(theta),Np=5000) -> pf 
+  theta$loglik <- logLik(pf)
+  theta
+} -> p
+```
+
+**Slices offer a limited perspective on the geometry of the likelihood surface**. With two parameters, we can evaluate the likelihood at a grid of points and visualize the surface. We compute a likelihood **cross-section** in the $\beta$ and $\mu_{IR}$ directions.
+
+```{r,cache=TRUE}
+expand.grid(Beta=seq(from=1,to=4,length=50), mu_IR=seq(from=0.7,to=3,length=50),
+rho=0.8, N=2600) -> p
+foreach (theta=iter(p,"row"),.combine=rbind, .inorder=FALSE) %dopar% {
+  pfilter(sir,params=unlist(theta),Np=5000) -> pf 
+  theta$loglik <- logLik(pf)
+  theta
+} -> p
+```
+
+```{r,warning=FALSE,cahce=TRUE,fig.align='center', fig.height=4}
+pp <- mutate(p,loglik=ifelse(loglik>max(loglik)-100,loglik,NA))
+ggplot(data=pp,mapping=aes(x=Beta,y=mu_IR,z=loglik,fill=loglik)) +
+  geom_tile(color=NA) + scale_fill_gradient() +
+  geom_contour(color='black',binwidth=3) +
+  labs(x=expression(beta),y=expression(mu[IR]))
+```
+
+#### Issues:
+1. The particle filter gives us a stochastic estimate of the likelihood.
+2. Lack of derivatives.
+3. Constrained parameters. In many cases, the parameters are constrained to be within a certain range, e.g., be positive. We must select an optimizer that can solve this constrained maximization problem, or figure out some of way of turning it into an unconstrained maximization problem.
+
+### An iterated filtering algorithm (IF2)
+
+**Model input**: 
+
+- Simulators for $f_{X_0}(x_0;\theta)$ and $f_{X_n|X_{n-1}}(x_n| x_{n-1}; \theta)$; 
+- Evaluator for $f_{Y_n|X_n}(y_n| x_n;\theta)$;
+- data, $y^*_{1:N}$ 
+
+**Algorithmic parameters**:
+
+- Number of iterations, $M$;
+- number of particles, $J$;
+- starting parameter swarm, $\{\Theta^0_j, j=1,\dots,J\}$;
+- perturbation density, $h_n(\theta|\varphi;\sigma)$;
+- perturbation scale, $\sigma_{1{:}M}$ 
+
+**Output**:
+
+- Final parameter swarm, $\{\Theta^M_j, j=1,\dots,J\}$ 
+
+This algorithm requires `rprocess` but not `dprocess`. It is **simulation-based**, also known as plug-and-play.
+
+#### Pseudocode
+
+1. $\quad$ For $m$ in $1{:} M$
+2. $\quad\quad\quad$ $\Theta^{F,m}_{0,j}\sim h_0(\theta|\Theta^{m-1}_{j}; \sigma_m)$ for $j$ in $1{:} J$
+3. $\quad\quad\quad$ $X_{0,j}^{F,m}\sim f_{X_0}(x_0 ; \Theta^{F,m}_{0,j})$ for $j$ in $1{:} J$
+4. $\quad\quad\quad$ For $n$ in $1{:} N$
+5. $\quad\quad\quad\quad\quad$ $\Theta^{P,m}_{n,j}\sim h_n(\theta|\Theta^{F,m}_{n-1,j},\sigma_m)$ for $j$ in $1{:} J$
+6. $\quad\quad\quad\quad\quad$ $X_{n,j}^{P,m}\sim f_{X_n|X_{n-1}}(x_n | X^{F,m}_{n-1,j}; \Theta^{P,m}_j)$ for $j$ in $1{:} J$
+7. $\quad\quad\quad\quad\quad$ $w_{n,j}^m = f_{Y_n|X_n}(y^*_n| X_{n,j}^{P,m} ; \Theta^{P,m}_{n,j})$ for $j$ in $1{:} J$
+8. $\quad\quad\quad\quad\quad$ Draw $k_{1{:}J}$ with $P[k_j=i]=  w_{n,i}^m\Big/\sum_{u=1}^J w_{n,u}^m$
+9.  $\quad\quad\quad\quad\quad$ $\Theta^{F,m}_{n,j}=\Theta^{P,m}_{n,k_j}$ and $X^{F,m}_{n,j}=X^{P,m}_{n,k_j}$ for $j$ in $1{:} J$
+10. $\quad\quad\quad$ End For
+11. $\quad\quad\quad$ Set $\Theta^{m}_{j}=\Theta^{F,m}_{N,j}$ for $j$ in $1{:} J$
+12. $\quad$ End For
+
+The inner loop (lines 4 through 10) is a basic particle filter applied to a model with stochastic perturbations to the parameters. The outer loop repeats this particle filter with decreasing perturbations.
+
+The superscript $F$ in $\Theta^{F,m}_{n,j}$ and $X^{F,m}_{n,j}$ denote **solutions to the filtering problem**, with the particles $j=1,\dots,J$ providing a Monte Carlo representation of the conditional distribution at time $n$ given data $y^*_{1:n}$ for filtering iteration $m$.
+
+The superscript $P$ in $\Theta^{P,m}_{n,j}$ and $X^{P,m}_{n,j}$ denote **solutions to the prediction problem**, with the particles $j=1,\dots,J$ providing a Monte Carlo representation of the conditional distribution at time $n$ given data $y^*_{1:n-1}$ for filtering iteration $m$.
+
+The weight $w^m_{n,j}$ gives the likelihood of the data at time $n$ for particle $j$ in filtering iteration $m$.
+
+#### Apply to data
+
+We use an $SIR_1R_2R_3$ model with state $X(t)=(S(t),I(t),R_1(t),R_2(t),R_3(t))$ giving the number of individuals in the susceptible and infectious categories, and three stages of recovery. The recovery stages, $R_1$, $R_2$ and $R_3$, are all modeled to be non-contagious. 
+
+- $R_1$ counts individuals who are bed-confined if they show symptoms;
+- $R_2$ counts individuals who are convalescent if they showed symptoms;
+- $R_3$ counts recovered individuals who have returned to schoolwork if they were symtomatic.  
+
+```{r}
+bsflu_rprocess <- "
+double dN_SI = rbinom(S,1-exp(-Beta*I*dt)); double dN_IR1 = rbinom(I,1-exp(-dt*mu_IR)); double dN_R1R2 = rbinom(R1,1-exp(-dt*mu_R1)); double dN_R2R3 = rbinom(R2,1-exp(-dt*mu_R2)); S -= dN_SI;
+I += dN_SI - dN_IR1;
+R1 += dN_IR1 - dN_R1R2;
+R2 += dN_R1R2 - dN_R2R3;
+"
+bsflu_dmeasure <- "
+lik = dpois(B,rho*R1+1e-10,give_log);
+"
+bsflu_rmeasure <- "
+B = rpois(rho*R1+1e-10);
+"
+```
+
+The 1e-10 tolerance value stops the code crashing when all particles have $R1=0$.
+
+Initial condition:
+```{r}
+bsflu_rinit <- " S=762;
+I=1;
+R1=0;
+R2=0; "
+```
+
+```{r,cache=TRUE}
+bsflu2 <- pomp(data=subset(sir_data,select=c(day,B)), times="day",t0=0,
+rprocess=euler(step.fun=Csnippet(bsflu_rprocess),delta.t=1/12),
+rmeasure=Csnippet(bsflu_rmeasure), 
+dmeasure=Csnippet(bsflu_dmeasure), 
+partrans=parameter_trans(
+log=c("Beta","mu_IR","mu_R1","mu_R2"),logit="rho"),
+statenames=c("S","I","R1","R2"), 
+paramnames=c("Beta","mu_IR","rho","mu_R1","mu_R2"), 
+rinit=Csnippet(bsflu_rinit)
+)
+```
+
+Set `run_level` according to time-consumption of computations. For this model and data, `Np=5000` and `Nmif=200` are empirically around the minimum to get stable results with an error in the likelihood of order 1 log unit. For this example we can set `run_level=2`.
+```{r}
+run_level <- 2 
+switch(run_level, {
+bsflu_Np=100; bsflu_Nmif=10; bsflu_Neval=10; bsflu_Nglobal=10; bsflu_Nlocal=10
+},{
+bsflu_Np=20000; bsflu_Nmif=100; bsflu_Neval=10; bsflu_Nglobal=10; bsflu_Nlocal=10
+},{
+bsflu_Np=60000; bsflu_Nmif=300; bsflu_Neval=10; bsflu_Nglobal=100; bsflu_Nlocal=20}
+)
+```
+
+Set parameters for a particle filter:
+```{r}
+bsflu_params <- data.matrix( 
+  read.table("https://raw.githubusercontent.com/ionides/531w20/master/12/mif_bsflu_params.csv", 
+             row.names=NULL,header=TRUE))
+which_mle <- which.max(bsflu_params[,"logLik"]) 
+bsflu_mle <- bsflu_params[which_mle,][c("Beta","mu_IR","rho","mu_R1","mu_R2")]
+```
+
+Treat $\mu_{R1}$ and $\mu_{R2}$ as known, fixed at the empirical mean of the bed-confinement and convalescence times for symptomatic cases:
+```{r}
+bsflu_fixed_params <- c(mu_R1=1/(sum(sir_data$B)/512), mu_R2=1/(sum(sir_data$C)/512) )
+bsflu_rw.sd <- 0.02; bsflu_cooling.fraction.50 <- 0.5
+```
+
+A local search of the likelihood surface: 
+```{r,cache=TRUE}
+stew(file=sprintf("local_search-%d.rda",run_level),{
+t_local <- system.time({
+mifs_local <- foreach(i=1:bsflu_Nlocal,
+.packages='pomp', .combine=c) %dopar% { 
+  mif2(bsflu2,params=bsflu_mle,Np=bsflu_Np,Nmif=bsflu_Nmif,
+       cooling.fraction.50=bsflu_cooling.fraction.50, 
+       rw.sd=rw.sd(Beta=bsflu_rw.sd, 
+                   mu_IR=bsflu_rw.sd, 
+                   rho=bsflu_rw.sd)
+       )
+  }
+})
+},seed=900242057,kind="L'Ecuyer")
+```
+
+The final filtering iteration carried out by `mif2` generates an approximation to the likelihood at the resulting point estimate. This approximation is not usually good enough for reliable inference. Partly, because some parameter perturbations remain in the last filtering iteration. Partly, because `mif2` may be carried out with fewer particles than necessary for a good likelihood evaluation. We evaluate the likelihood, together with a standard error, using replicated particle filters at each point estimate:
+
+```{r,cache=TRUE}
+stew(file=sprintf("lik_local-%d.rda",run_level),{
+  t_local_eval <- system.time({
+    liks_local <- foreach(i=1:bsflu_Nlocal,.combine=rbind)%dopar% {
+      evals <- replicate(bsflu_Neval, logLik(
+        pfilter(bsflu2,params=coef(mifs_local[[i]]),Np=bsflu_Np)))
+      logmeanexp(evals, se=TRUE)
+      }
+    })
+},seed=900242057,kind="L'Ecuyer")
+
+results_local <- data.frame(logLik=liks_local[,1],logLik_se=liks_local[,2],t(sapply(mifs_local,coef)))
+```
+
+```{r}
+summary(results_local$logLik,digits=5)
+```
+
+These repeated stochastic maximizations can show us the **geometry of the likelihood surface in a neighborhood of this point estimate**.
+A pairs plot is helpful to interpret these results.
+
+```{r fig.align="center",fig.height=5}
+pairs(~logLik+Beta+mu_IR+rho,data=subset(results_local,logLik>max(logLik)-50))
+```
+
+There is likely a linear relationship between estimates of $\beta$ and $\mu_{IR}$, whic corresponds to previous contour slice plot.
+
+### Parameter search
+
+When carrying out parameter estimation for dynamic systems, we need to specify beginning values for both the dynamic system (in the state space) and the parameters (in the parameter space).
+
+By convention, we use initial values for the initialization of the dynamic system and starting values for initialization of the parameter search.
+
+Parameter values for the flu model:
+
+```{r}
+bsflu_box <- rbind( 
+  Beta=c(0.001,0.01), 
+  mu_IR=c(0.5,2),
+  rho = c(0.5,1)
+)
+```
+
+```{r}
+stew(file=sprintf("box_eval-%d.rda",run_level),{ 
+  t_global <- system.time({
+    mifs_global <- foreach(i=1:bsflu_Nglobal,.combine=c) %dopar% { 
+      mif2(
+        mifs_local[[1]], params=c(
+          apply(bsflu_box,1,function(x)runif(1,x[1],x[2])),
+          bsflu_fixed_params) 
+        )}
+    }) 
+  },seed=1270401374,kind="L'Ecuyer")
+```
+
+Repeated likelihood evaluations at each point estimate:
+
+```{r}
+stew(file=sprintf("lik_global_eval-%d.rda",run_level),{ 
+  t_global_eval <- system.time({
+    liks_global <- foreach(i=1:bsflu_Nglobal, 
+      .combine=rbind) %dopar% {
+        evals <- replicate(bsflu_Neval, logLik(pfilter(bsflu2,
+          params=coef(mifs_global[[i]]),Np=bsflu_Np))) 
+        logmeanexp(evals, se=TRUE)
+        } 
+    })
+},seed=442141592,kind="L'Ecuyer")
+
+results_global <- data.frame(
+  logLik=liks_global[,1],
+  logLik_se=liks_global[,2],
+  t(sapply(mifs_global,coef)))
+summary(results_global$logLik,digits=5)
+```
+
+We can collect successful optimization results for subsequent investigation, 
+
+```{r}
+if (run_level>2) 
+  write.table(rbind(results_local,results_global),
+              file="mif_bsflu_params.csv",
+              append=TRUE,col.names=FALSE,row.names=FALSE)
+```
+
+Plotting these diverse parameter to get a feel for the global geometry of the likelihood surface,
+
+```{r,fig.align='center',fig.height=5}
+pairs(~logLik+Beta+mu_IR+rho,
+      data=subset(results_global,logLik>max(logLik)-250))
+```
+
+We see that optimization attempts from diverse remote starting points end up with comparable likelihoods, even when the parameter values are quite distinct. This gives us some confidence in our maximization procedure.
+
+### Diagnostic plots for the maximization procedure
+
+```{r,fig.align='center'}
+plot(mifs_global)
+```
+
+
+
+
+
+
+
+

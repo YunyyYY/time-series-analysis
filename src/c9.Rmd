@@ -1,0 +1,149 @@
+---
+title: "Chapter 9. Introduction to partially observed Markov process models"
+output: 
+  html_document:
+      toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Overview
+
+- Basic time series models of deterministic trend plus **colored noise** (any kind of filtered noise signal can be called 'colored noise', which is just to say that it is not a pure white noise) imply perfect predictability if the trend function enables **extrapolation** (an estimation of a value based on extending a known sequence of values or facts beyond the area that is certainly known. In a general sense, to extrapolate is to infer something that is not explicitly stated from existing information).
+- As in the deterministic signal plus noise model, we will model the observations as random variables conditional on the trajectory of a latent process. It can also be called a state process or a hidden process.
+
+
+### Partially observed Markov processes (POMP) models
+
+Partial observations here mean either or both of 
+1. measurement noise; 
+2. entirely unmeasured latent variables. 
+Both these features are present in many systems.
+
+A **partially observed Markov process** (POMP) model is defined by putting together a latent process model and an observation model.
+
+We initialize the Markov process at $t_0$, the initialization model could be deterministic (a fixed value) or a random variable. Formally, a fixed initial value is a special case of a discrete distribution having a point mass with probability one at the fixed value. Therefore, fixed initial values are covered in our framework since we use probability density functions to describe both discrete and continuous probability distributions. Mathematically, a probability mass function (for discrete distributions) is a probability density on a discrete space. There is a proper mathematical justification for treating a probability mass function as a type of probability density function.
+
+Markov property:\[
+f_{X_{n} | X_{1: n-1}}\left(x_{n} | x_{1: n-1}\right)=f_{X_{n} | X_{n-1}}\left(x_{n} | x_{n-1}\right)
+\]
+
+The probability density function $f_{X_{n} | X_{n-1}}\left(x_{n} | x_{n-1}\right)$ s called the **one-step transition density of the Markov process**.
+
+For a POMP model, <font color='orangered'>the full joint distribution of the latent process is entirely specified by the one-step transition densities</font>, given the initial value. \[
+f_{X_{0: N}}\left(x_{0: N}\right)=f_{X_{0}}\left(x_{0}\right) \prod_{n=1}^{N} f_{X_{n} | X_{n-1}}\left(x_{n} | x_{n-1}\right)
+\]
+
+#### Process model
+$f_{X_{n} | X_{n-1}}\left(x_{n} | x_{n-1}\right)$ is also called the **process model**.
+
+A latent process model $X_{0:N}$ is time-homogeneous if the one step transition probability density does not depend on $n$, so there is a conditional density $f(y|x)$ such that, for all $n\in 1:N$, \[
+f_{X_{n} | X_{n-1}}\left(x_{n} | x_{n-1}\right) = f\left(x_{n} | x_{n-1}\right)
+\]
+
+#### Measurement model
+
+We model the measurement at time $t_n$ to depend only on the value of the latent process at time $t_n$, conditionally independent of all other latent process and observation process variables. Formally, this assumption is: \[
+f_{Y_{n} | X_{0: N}, Y_{1: n-1}, Y_{n+1: N}}\left(y_{n} | x_{0: N}, y_{1: n-1}, y_{n+1: N}\right)=f_{Y_{n} | X_{n}}\left(y_{n} | x_{n}\right)
+\]
+
+$f_{Y_{n} | X_{n}}\left(y_{n} | x_{n}\right)$ is called the measurement model. In general, the measurement model can depend on $n$ or on any covariate time series. The measurement model is **time-homogeneous** if there is a conditional probability density function $g(y|x)$ such that, for all $n\in 1:N$, \[
+f_{Y_n|X_n} (y_n|x_n) = g(y_n|x_n)\]
+
+### Computations with POMP
+
+#### Prediction 
+
+One-step prediction of the latent process at time $t_{n+1}$ given data up to time $t_n$ involves finding \[
+f_{X_{n+1} | Y_{1: n}}\left(x_{n+1} | y_{1: n}\right)
+\]
+We have required our prediction to be a **conditional probability density**, not a *point estimate*. In the context of forecasting, this is called a **probabilistic forecast**, and has advantages over a point estimate forecast.
+
+#### Filtering
+
+The name filtering comes from signal processing, where noisy signals are filtered through capacitors and resistors to estimate the signals being send.
+
+The filtering calculation at time $t_n$ is to find the conditional distribution of the latent process $X_n$ given <font color='orangered'>**currently available data**</font> $y_{1:n}$,
+
+\[
+f_{X_{n} | Y_{1: n}}\left(x_{n} | y_{1: n}\right)
+\] and \[
+f_{X_{n} | Y_{1: n}}\left(x_{n} | y_{1: n}\right)=\frac{f_{X_{n} | Y_{1: n-1}}\left(x_{n} | y_{1: n-1}\right) f_{Y_{n} | X_{n}}\left(y_{n} | x_{n}\right)}{f_{Y_{n} | Y_{1: n-1}}\left(y_{n} | y_{1: n-1}\right)}
+\] The denominator in this filtering formula is the conditional likelihood of $y_n$ given $y_{1:n−1}$. This can be computed in terms of the one-step prediction density, via the conditional likelihood formula: \[
+f_{Y_{n} | Y_{1: n-1}}\left(y_{n} | y_{1: n-1}\right)=  \int f_{X_{n} | Y_{1: n-1}}\left(x_{n} | y_{1: n-1}\right) f_{Y_{n} | X_{n}}\left(y_{n} | x_{n}\right) d x_{n}
+\] To make this formula work for $n = 1$, we again take advantage of the convention that $1:k$ is the empty set when $k=0$.
+
+One-step prediction of the latent process at time $t_n$ given data up to time $t_{n−1}$ can be computed in terms of the filtering problem at time $t_{n−1}$, via the prediction formula for $n\in 1:N$,
+\[
+f_{X_n|Y_{1:n−1}}(x_n|y_{1:n−1}) = \int \underbrace{f_{X_{n−1}|Y_{1:n−1}}(x_{n−1}| y_{1:n−1})}_{\text{filtering at time }n-1} \underbrace{f_{X_n|X_{n−1}}(x_n|x_{n−1})}_{\text{One-step transition density}}dx_{n-1}
+\]
+
+The initial condition at $n=1$ is given by \[
+f_{X_0|Y_{1:0}} (x_0 | y_{1:0}) = f_{X_0 (x_0)},
+\] because the set of $Y$ is the empty set and conditioning on an empty collection of random variables is the same as not conditioning at all. In other words, the filtering calcuation at time $t_0$ is the initial density for the latent process. This makes sense, since at time $t_0$ we have no data to condition on.
+
+<font color='royalblue'> **The prediction and filtering formulas are recursive. If they can be computed for time $t_n$ then they provide the foundation for the following computation at time $t_{n+1}$.** </font>
+
+#### Smoothing
+
+Smoothing involves finding the conditional distribution of $X_n$ given <font color='orangered'>**all the data**</font>, $y_{1:N}$,
+\[
+f_{X_{n} | Y_{1: N}}\left(x_{n} | y_{1: N}\right)
+\]
+
+Smoothing is less fundamental for likelihood-based inference than filtering and one-step prediction. Nevertheless, sometimes we want to compute the smoothing density. The filtering and prediction formulas are **forwards recursions** in time. There are similar **backwards recursion** formulas, \[
+f_{Y_{n: N} | X_{n}}\left(y_{n: N} | x_{n}\right)=f_{Y_{n} | X_{n}}\left(y_{n} | x_{n}\right) f_{Y_{n+1: N} | X_{n}}\left(y_{n+1: N} | x_{n}\right)
+\]
+The forwards and backwards recursion formulas together allow us to compute the smoothing formula: \[
+f_{X_{n} | Y_{1: N}}\left(x_{n} | y_{1: N}\right)=\frac{f_{X_{n} | Y_{1: n-1}}\left(x_{n} | y_{1: n-1}\right) f_{Y_{n: N} | X_{n}}\left(y_{n: N} | x_{n}\right)}{f_{Y_{n: N} | Y_{1: n-1}}\left(y_{n: N} | y_{1: n-1}\right)}
+\]
+
+#### Likelihood calculation
+
+The model may depend on a parameter vector $\theta$. The likelihood calculation is to evaluate the joint density of $Y_{1:N}$ at the data, $f_{Y_{1:N}} (y_{1:N})$.
+
+If we can compute this at any value of θ we choose, we can perform numerical optimization to get a maximum likelihood estimate. Likelihood evaluation and maximization lets us compute profile likelihood confidence intervals, carry out likelihood ratio tests, and make AIC model comparisons.
+
+Using the identity \[
+f_{Y_{1: N}}\left(y_{1: N}\right)=\prod_{n=1}^{N} f_{Y_{n} | Y_{1: n-1}}\left(y_{n} | y_{1: n-1}\right)
+\] and initialization \[
+f_{Y_{1} | Y_{1: 0}}\left(y_{1} | y_{1: 0}\right)=f_{Y_{1}}\left(y_{1}\right)
+\] If our model has an unknown parameter $\theta$, the likelihood identity lets us evaluate the log likelihood function $\ell(\theta)\log f_{Y_{1:N}}(y_{1:N};\theta)$.
+
+### Linear Gaussian POMP (LG-POMP) models
+Linear Gaussian partially observed Markov process (LG-POMP) models have many applications. If a scientific and engineering application is not too far from linear and Gaussian, you save a lot of effort if an LG-POMP model is appropriate. General nonlinear POMP models usually involve intensive Monte Carlo computation.
+
+The **basic structural model** is an econometric model used for forecasting. This model supposes that the observation process $Y_{1:N}$ is the sum of a level ($L_n$), a trend ($T_n$) describing the rate of change of the level, and a monthly seasonal component ($S_n$). The model supposes that all these quantities are perturbed with Gaussian white noise at each time point. So we have the following model equations: \[
+\begin{aligned}
+&Y_{n}=L_{n}+S_{n}+\epsilon_{n}\\
+&L_{n}=L_{n-1}+T_{n-1}+\xi_{n}\\
+&T_{n}=T_{n-1}+\zeta_{n}\\
+&S_{n}=-\sum_{k=1}^{11} S_{n-k}+\eta_{n}
+\end{aligned}
+\] where we suppose $\epsilon_n \sim N[0,\sigma_\epsilon^2]$, $\xi_n \sim N[0,\sigma_\xi^2]$, $\zeta_n ∼ N[0,\sigma_\zeta^2]$, and $\eta_n\sim N[0,\sigma_\eta^2]$.
+
+There are two common special cases of the basic structure model: 
+1. The local linear trend model is the basic structural model *without* the seasonal component ${S_n}$
+2. The local level model is the basic structural model *without* either the seasonal component ${S_n}$, or the trend component ${T_n}$. The local level model is therefore a random walk observed with measurement error.
+
+#### Spline smoothing
+Spline smoothing is a standard method to smooth scatter plots and time plots. For example, `smooth.spline` in R.
+
+A smoothing spline for an equally spaced time series $y_{1:N}$ collected at times $t_{1:N}$ is the sequence $x_{1:N}$ minimizing the penalized sum of squares (PSS), which is defined as \[
+\operatorname{PSS}\left(x_{1: N} ; \lambda\right)=\sum_{n=1}^{N}\left(y_{n}-x_{n}\right)^{2}+\lambda \sum_{n=3}^{N}\left(\Delta^{2} x_{n}\right)^{2}
+\] The smoothing parameter $\lambda$, penalizes $x_{1:N}$ to prevent the spline from interpolating the data.
+
+### The Kalman filter
+
+The Kalman filter is an efficient recursive filter that estimates the internal state of a linear dynamic system from a series of noisy measurements.
+
+- $\mu_{n}^{F}\left(y_{1: n}\right)=\mathbb{E}\left[X_{n} | Y_{1: n}=y_{1: n}\right]$ is the filter mean for time $t_n$.
+
+- $\Sigma_{n}^{F}\left(y_{1: n}\right)=\operatorname{Var}\left(X_{n} | Y_{1: n}=y_{1: n}\right)$ is the filter variance for time $t_n$.
+
+- $\mu_{n}^{S}\left(y_{1: N}\right)=\mathbb{E}\left[X_{n} | Y_{1: N}=y_{1: N}\right]$ is the smoothing mean for time $t_n$.
+
+- $\Sigma_{n}^{S}\left(y_{1: N}\right)=\operatorname{Var}\left(X_{n} | Y_{1: N}=y_{1: N}\right)$ is the smoothing variance for time $t_n$.
+
