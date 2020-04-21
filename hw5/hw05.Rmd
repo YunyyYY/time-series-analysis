@@ -1,0 +1,115 @@
+---
+title: "Homework 5"
+author: "Lingyun Guo"
+date: "3/15/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+\newcommand\prob{\mathbb{P}}
+\newcommand\E{\mathbb{E}}
+\newcommand\ar{\phi}
+\newcommand\ma{\psi}
+\newcommand\var{\mathrm{Var}}
+\newcommand\cov{\mathrm{Cov}}
+
+---
+
+### Question 5.1
+By MP1, 
+$$
+\begin{aligned}
+f_{X_{0: N}}\left(x_{0: N}\right) &= f_{X_0}(x_0)f_{X_1|X_0}(x_1|x_0)f_{X_2|X_{0:1}}(x_2|x_{0:1}) ... f_{X_N|X_{0:N-1}}(x_N|x_{0:N-1}) \\
+&= f_{X_0}(x_0)f_{X_1|X_0}(x_1|x_0)f_{X_2|X_1}(x_2|x_1) ... f_{X_N|X_N-1}(x_N|x_{N-1}) \\
+&= f_{X_{0}}\left(x_{0}\right) \prod_{n=1}^{N} f_{X_{n} | X_{n-1}}\left(x_{n} | x_{n-1}\right)
+\end{aligned}
+$$
+
+### Question 5.2
+According to the law of total probability on conditional probabilities,
+$$
+f_{X_{n} | Y_{1: n-1}}\left(x_{n} | y_{1: n-1}\right) = \int f_{X_{n} | X_{n-1}, Y_{1: n-1}}(x_n|x_{n-1}, y_{1:n-1})f_{X_{n-1}|Y_{1:n-1}}(x_{n-1}|y_{1:n-1}))dx_{n-1}
+$$
+Since $x_n$ only depends on $x_{n-1}$, the formula can be further simplified:
+$$
+\begin{aligned}
+f_{X_{n} | Y_{1: n-1}}\left(x_{n} | y_{1: n-1}\right) &= 
+\int
+f_{X_{n} | X_{n-1}}\left(x_{n} | x_{n-1}\right)f_{X_{n-1}|Y_{1:n-1}}(x_{n-1}|y_{1:n-1}) dx_{n-1}
+\end{aligned}
+$$
+
+### Question 5.3
+For simplicity, we temporarily omit the subscripts of $f$ in intermediate steps.
+
+For [MP5], 
+$$
+\begin{aligned}
+f_{X_{n} | Y_{1: n}}\left(x_{n} | y_{1: n}\right) &= 
+f_{X_{n} | Y_{1: n}}(x_n|y_n, y_{1:n-1}) \\
+&= \frac{f(x_n, y_n, y_{1:n-1})}{f(y_n, y_{1:n-1})} \\
+&= \frac{f(x_n, y_n|y_{1:n-1})f(y_{1:n-1})}{f(y_n, y_{1:n-1})}\\
+&= \frac{f(x_n, y_n|y_{1:n-1})}{f(y_n|y_{1:n-1})}
+\end{aligned}
+$$
+Since $f(x_n, y_n|y_{1:n-1}) = f(y_n|x_n, y_{1:n-1})f(x_n|y_{1:n-1})$ and $y_n$ only depends on the latent space $x_n$, we have $f(x_n, y_n|y_{1:n-1}) = f(y_n|x_n)f(x_n|y_{1:n-1})$. Therefore, continuing the above formula,
+$$
+\begin{aligned}
+f_{X_{n} | Y_{1: n}}\left(x_{n} | y_{1: n}\right) &= \frac{f(y_n|x_n)f(x_n|y_{1:n-1})}{f(y_n|y_{1:n-1})}\\
+&= \frac{f_{X_{n} | Y_{1: n-1}}\left(x_{n} | y_{1: n-1}\right) f_{Y_{n} | X_{n}}\left(y_{n} | x_{n}\right)}{f_{Y_{n} | Y_{1: n-1}}\left(y_{n} | y_{1: n-1}\right)}
+\end{aligned}
+$$
+
+For [MP6], according to the law of total probability, 
+$$
+f_{Y_{n} | Y_{1: n-1}}\left(y_{n} | y_{1: n-1}\right) = \int f(y_n|x_n, y_{1:n-1}))f(x_n|y_{1:n-1})dx_n 
+$$
+Since $y_n$ only depends on the latent state $x_n$, the formula can be simplified as
+$$
+f_{Y_{n} | Y_{1: n-1}}\left(y_{n} | y_{1: n-1}\right) =
+\int f_{X_{n} | Y_{1: n-1}}\left(x_{n} | y_{1: n-1}\right) f_{Y_{n} | X_{n}}\left(y_{n} | x_{n}\right) d x_{n}
+$$
+
+### Question 5.4
+For [MP8], since $y_n$ is causal and only depends on $x_n$, it is independent of $y_{n+1:N}$ given $x_n$. Therefore, 
+$$
+\begin{aligned}
+f_{Y_{n: N} | X_{n}}\left(y_{n: N} | x_{n}\right) &= f(y_n, y_{n+1:N} | x_{n}) \\
+&=f_{Y_{n} | X_{n}}\left(y_{n} | x_{n}\right) f_{Y_{n+1: N} | X_{n}}\left(y_{n+1: N} | x_{n}\right)
+\end{aligned}
+$$
+
+For [MP9], similar to [MP6], we can use the law of total probability, 
+$$
+f_{Y_{n+1: N} | X_{n}}\left(y_{n+1: N} | x_{n}\right) = \int f(y_{n+1:N}|x_n, x_{n+1})f(x_{n+1}|x_n)dx_{n+1}
+$$
+Since $y_{n+1:N}$ depends on $x_{n+1:N}$ respectively, they are independent of $x_n$ and only has dependency on $x_{n+1}$. Therefore, we have
+$$
+f_{Y_{n+1: N} | X_{n}}\left(y_{n+1: N} | x_{n}\right) = \int f_{Y_{n+1: N} | X_{n+1}}\left(y_{n+1: N} | x_{n+1}\right) f_{X_{n+1} | X_{n}}\left(x_{n+1} | x_{n}\right) d x_{n+1}
+$$
+
+### Question 5.5
+$$
+\begin{aligned}
+f_{X_{n} | Y_{1: N}}\left(x_{n} | y_{1: N}\right) &= 
+f_{X_{n} | Y_{1: N}}(x_n|y_{1:n-1}, y_{n:N}) \\
+&= \frac{f(x_n, y_{1:n-1}, y_{n:N})}{f(y_{1:n-1}, y_{n:N})} \\
+&= \frac{f(x_n, y_{n:N}|y_{1:n-1})f(y_{1:n-1})}{f(y_{n:N}, y_{1:n-1})}\\
+&= \frac{f(x_n, y_{n:N}|y_{1:n-1})}{f(y_{n:N}|y_{1:n-1})}\\
+&= \frac{f(y_{n:N}|x_n, y_{1:n-1})f(x_n|y_{1:n-1})}{f(y_{n:N}|y_{1:n-1})}
+\end{aligned}
+$$
+Since $y_{n:N}$ and $y_{1:n-1}$ are independent, we have
+$$
+\begin{aligned}
+f_{X_{n} | Y_{1: N}}\left(x_{n} | y_{1: N}\right) &= \frac{f(y_{n:N}|x_n)f(x_n|y_{1:n-1})}{f(y_{n:N}|y_{1:n-1})}\\
+&= \frac{f_{X_{n} | Y_{1: n-1}}\left(x_{n} | y_{1: n-1}\right) f_{Y_{n:N} | X_{n}}\left(y_{n:N} | x_{n}\right)}{f_{Y_{n:N} | Y_{1: n-1}}\left(y_{n:N} | y_{1: n-1}\right)}
+\end{aligned}
+$$
+
+### 5.6 Reference
+1. Law of total probability. Wikipedia. https://en.wikipedia.org/wiki/Law_of_total_probability
+
+
+

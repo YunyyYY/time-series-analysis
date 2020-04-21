@@ -1,0 +1,240 @@
+---
+title: "Homework 3"
+author: Lingyun Guo
+output: 
+  html_document
+---
+
+\newcommand\prob{\mathbb{P}}
+\newcommand\E{\mathbb{E}}
+\newcommand\var{\mathrm{Var}}
+\newcommand\cov{\mathrm{Cov}}
+
+---
+
+```{r, include=FALSE}
+options(warn=-1)  # disable the warnings
+library(knitr)
+```
+
+### AA Jan. low temperature
+In this homework, we are going to analyze the Ann Arbor January Low temperature time series and find a proper ARMA model to describe the data. We fitst take a look at the data:
+```{r, fig.align='center', echo=FALSE}
+
+x <- read.table(file="http://ionides.github.io/531w20/01/ann_arbor_weather.csv",header=TRUE)
+plot(Low~Year,data=x,type="l", main="Ann Arbor January Low temperature time series")
+```
+
+Our goal is to find a suitable ARMA model to describe this time series.
+
+### Choose $p$, $q$ for ARMA model
+
+To start with, we want to determine what values of $p$ and $q$ to choose for a proper ARMA model. To do so we first compute the AIC table for the time series:
+
+```{r, echo=FALSE}
+aic_table <- function(data,P,Q){
+  table <- matrix(NA,(P+1),(Q+1))
+  for(p in 0:P) {
+    for(q in 0:Q) {
+      try(table[p+1,q+1] <- arima(data,order=c(p,0,q),method = "ML")$aic)
+    }
+  }
+  dimnames(table) <- list(paste("AR",0:P, sep=""),paste("MA",0:Q,sep=""))
+  table
+}
+
+# aic_table(x$Low,5,5) # 
+temp_aic_table = aic_table(x$Low,5,5) # 
+kable(temp_aic_table,digits=2)
+```
+
+The AIC table suggests that ARMA$(0,0)$ has the lowest AIC value, 818.09, closely followed by its surroundings, ARMA$(0,1)$, ARMA$(1,0)$ and ARMA$(1,1)$. To distinguish the best model out of them, we can fit the four candidate models for comparison.
+
+### Fit ARMA models
+#### ARMA$(0,0)$
+Fit with ARMA$(0,0)$: 
+```{r, fig.align='center', echo=FALSE}
+arma00 <- arima(x$Low, order=c(0,0,0))
+print(arma00)
+```
+
+The general formula for ARMA$(0,0)$ model is \[Y_n = \mu + \epsilon_n,\] from the fitted results, we have $\mu=-2.9328$ and $\var[\epsilon_n] = 54.78$.
+
+#### ARMA$(1,0)$
+
+Fit with ARMA$(1,0)$: 
+```{r, fig.align='center', echo=FALSE}
+arma10 <- arima(x$Low, order=c(1,0,0))
+print(arma10)
+```
+
+Check the root of this AR1 polynomial,
+```{r}
+polyroot(c(1,-coef(arma10)[c("ar1")]))
+```
+the root is safely outside the unit circle, thus the AR1 model is causal. Taking the estimated parameters into the AR1 model, \[
+\begin{aligned}
+Y_n &= \mu + \alpha(Y_{n-1}-\mu) + \epsilon_n \\
+&= -2.9339 + 0.0354(Y_{n-1}+2.9339) + \epsilon_n \\
+&= -2.83 + 0.0354Y_{n-1} + \epsilon_n
+\end{aligned}
+\]
+Here we noticed that in this AR1 model, the auto-regression part only places a weak influence on $Y_n$, comparing to $\mu$ and variance of the noise, $\var[\epsilon_n] = 54.71$.
+
+#### ARMA$(0,1)$
+
+Fit with ARMA$(0,1)$: 
+```{r, fig.align='center', echo=FALSE}
+arma01 <- arima(x$Low, order=c(0,0,1))
+print(arma01)
+```
+
+Check the root of the MA1 polynomial,
+```{r}
+polyroot(c(1,coef(arma01)[c("ma1")]))
+```
+again the root is safely outside the unit circle, indicating that the model is invertible. Taking the estimates into MA1 model: \[
+\begin{aligned}
+Y_n &= \mu + \epsilon_n + \beta\epsilon_{n-1} \\
+&= -2.9336 + \epsilon_n + 0.0344\epsilon_{n-1}
+\end{aligned}
+\]
+In this model, the previous white noise exerts little influnce on the current value. Also, the variance of noise $\var[\epsilon_n] = 54.71$ is considerable comparing to the mean and MA coefficient.
+
+#### ARMA$(1,1)$
+Finally, fit with ARMA$(1,1)$: 
+```{r, echo=FALSE}
+arma11 <- arima(x$Low, order=c(1,0,1))
+print(arma11)
+```
+
+Check the roots for ARMA$(1,1)$, 
+```{r}
+print(polyroot(c(1,-coef(arma11)[c("ar1")])))
+print(polyroot(c(1,coef(arma11)[c("ma1")])))
+```
+we can conclude that the ARMA$(1,1)$ model is both causal and invertible. Taking the parameters into the ARMA$(1,1)$ model, we have \[
+\begin{aligned}
+Y_n &= \mu + \alpha(Y_{n-1}-\mu) + \epsilon_n + \beta\epsilon_{n-1} \\
+&= -2.9680 + 0.7852(Y_{n-1}+2.9680) + \epsilon_n -0.7414\epsilon_{n-1} \\
+&= -0.6375 + 0.7852Y_{n-1} + \epsilon_n - 0.7414\epsilon_{n-1}
+\end{aligned}
+\]
+The ARMA$(1,1)$ model is largely different from the previous three models, although the estimated variance for white noise, $\var[\epsilon_n] = 54.52$ is similar to previous ones. From the summaries of AR1 and MA1 models, we notice that they both have pretty small values and standard errors for `ar1` or `ma1` coefficient, much less than the standard errors of the corresponding parameters in the ARMA$(1,1)$ model. However, in ARMA$(1,1)$ model, their values are much larger, although still small comparing to the variance of white noise. In order to determine which model is the most suitable to describe the time series, we move on to diagnostic analysis.
+
+### Diagnostic analysis
+
+We first compare the residuals of the four models:
+```{r, fig.align='center', out.width="textwidth", echo=FALSE}
+par(mfrow=c(2,2))
+plot(arma00$resid,main="Residual for ARMA(0,0)")
+plot(arma10$resid,main="Residual for ARMA(1,0)")
+plot(arma01$resid,main="Residual for ARMA(0,1)")
+plot(arma11$resid,main="Residual for ARMA(1,1)")
+```
+
+However, these four plots seem identical, and are even visually indistinguishable from the original plots. After I reconfirmed that the steps I took to plot the residuals are correct, I decided to take a look at the actual predicted values generated by these four models:
+```{r, fig.align='center', out.width="textwidth", echo=FALSE}
+par(mfrow=c(2,2))
+plot(x$Low,type="l",main="Actual prediction of ARMA(0,0)");lines(x$Low - arma00$resid,col="red")
+plot(x$Low,type="l",main="Actual prediction of ARMA(1,0)");lines(x$Low - arma10$resid,col="red")
+plot(x$Low,type="l",main="Actual prediction of ARMA(0,1)");lines(x$Low - arma01$resid,col="red")
+plot(x$Low,type="l",main="Actual prediction of ARMA(1,1)");lines(x$Low - arma11$resid,col="red")
+```
+Comparing with the noise, the predictions seem trivial. These four models seem to indicate that the noise plays the leading role in this particular time series.
+
+In order to determine if the residuals are indeed uncorrelated, I generated the residual ACF plots of the four models for comparison. 
+```{r, fig.align='center', out.width="textwidth", echo=FALSE}
+par(mfrow=c(2,2))
+acf(arma00$resid,na.action=na.pass,main="Residual ACF for ARMA(0,0)")
+acf(arma01$resid,na.action=na.pass,main="Residual ACF for ARMA(0,1)")
+acf(arma10$resid,na.action=na.pass,main="Residual ACF for ARMA(1,0)")
+acf(arma11$resid,na.action=na.pass,main="Residual ACF for ARMA(1,1)")
+```
+
+From the plots, we can see that they have very similar patterns. There is no obvious evidence which model is better than the others, and all residuals appear to be uncorrelated at 95\% confidence. As a result we cannot reject any of them, and all can be used to describe the original time series.
+
+### Global Temperature
+
+After analyzing the Ann Arbor January Low temperature time series, I turned to test their performance on the global mean annual temperature time series, which recorded the mean annual temperature from year 1880 to 2020:
+
+```{r,fig.align='center', echo=FALSE}
+global <- read.table(file="http://ionides.github.io/531w20/hw03/Global_Temperature.txt",header=TRUE)
+plot(Anomaly~Year,data=global,type="l", main="Global mean annual temperatur")
+```
+
+
+### Fit AA Jan. low temperature models on the global temperature
+We can simulate time series with the previously generated models and compare the simulations with the corresponding actual time series to see if our previous model is valid on this new data. Since the data starts from year 1880, we can cut off the first twenty years and use the value at year 1899 as the initial value,
+
+```{r}
+global[20,]
+```
+
+Thus we set $Y_0 = -0.17$ and set the values of $\mu$ and $\sigma^2$ as previously estimated. Then we simulated a sequence for each of the four models and plotted the simulation:
+
+```{r, fig.align='center', echo=FALSE}
+# define coefficients
+N = 120
+sigma00 <- sqrt(54.78)
+mu00 <- -2.9328
+sigma10 <- sqrt(54.71)
+mu10 <- -2.9339
+sigma01 <- sqrt(54.71)
+mu01 <- -2.9336
+sigma11 <- sqrt(54.52)
+mu11 <- -2.9680
+
+# generated white noise terms
+set.seed(02-8-2020)
+e10 <- rnorm(N,mean=mu10,sd=sigma10)
+e01 <- rnorm(N+1,mean=mu01,sd=sigma01)
+e11 <- rnorm(N+1,mean=mu11,sd=sigma11)
+
+x10 <- c(global[20,]$Anomaly, array(0, N))
+x01 <- array(0, N)
+x11 <- c(global[20,]$Anomaly, array(0, N))
+
+x00 <- rnorm(N,mean=mu00,sd=sigma00)
+for(i in 1:N) {
+  x10[i+1] = -2.83+0.0354*x10[i]+e10[i]
+  x01[i] = -2.9336 + e01[i+1] + 0.0344*e01[i]
+  x11[i+1] = -0.6375 + 0.7852*x11[i] + e11[i+1] - 0.7414*e11[i]
+}
+x10 = x10[2:121]
+x11 = x11[2:121]
+```
+
+```{r, fig.align='center', out.width="textwidth", echo=FALSE}
+year = 1900:2019
+par(mfrow=c(2,2))
+plot(x00~year,type='l',main="Simulation of ARMA(0,0)")
+plot(x10~year,type='l',main="Simulation of ARMA(1,0)")
+plot(x01~year,type='l',main="Simulation of ARMA(0,1)")
+plot(x11~year,type='l',main="Simulation of ARMA(1,1)")
+```
+
+### Discussion
+
+Obviously these simulations are far away from the actual data, which means that these models are bad at describing the global mean temperature time series. 
+
+The reason lies in the difference in components of the two models. For Ann Arbor January low temperature, there is no apparent trend in the data and the variance of noise is large comparing to the estimated mean value. On the contrary, the global mean temperature has an obvious trend with varying mean value and comparatively small variance. Therefore, it is inappropriate to use the model suitable for Ann Arbor January low temperature time series to analyze the global mean temperature.
+
+In fact, we can use a quadratic trend to fit the data:
+```{r}
+lm_fit <- lm(Anomaly~Year+I(Year^2),data=global)
+summary(lm_fit)
+```
+
+From the model summary, we find this hypothesis pretty convincing. The P-value indicates that the quadratic model is significant with 99.9\% confindence. We can also plot the predicted value of this model:
+```{r,fig.align='center',echo=FALSE}
+yr <- 1880:2026
+Z <- cbind(1,yr,yr^2)
+beta <- coef(lm_fit)
+prediction <- Z%*%beta
+plot(Anomaly~Year,data=global,ty="l",xlim=range(yr),
+     ylim=range(c(global$Annual,prediction),na.rm=TRUE), lty="dashed")
+lines(x=yr,y=prediction,col="red")
+```
+
+

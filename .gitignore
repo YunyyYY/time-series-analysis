@@ -3,6 +3,8 @@
 
 # mac FS config
 *.DS_Store
+*.ipynb_checkpoints
+*.idea/
 
 # Rmarkdown preview
 *.nb.html
@@ -12,7 +14,8 @@
 .Rapp.history
 
 # Session Data files
-.RData
+*.RData
+*.rda
 
 # User-specific files
 .Ruserdata
@@ -38,6 +41,7 @@ vignettes/*.pdf
 
 # knitr and R markdown default cache directories
 *_cache/
+*_files/
 /cache/
 
 # Temporary files created by R markdown
